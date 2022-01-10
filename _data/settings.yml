@@ -10,7 +10,7 @@ description: Pea&Pig are always happy
 author:
   name: wanglongke
   image: 01.jpg
-  say-hello: Hello, I’m <strong>Wang Longke</strong>
+  say-hello: <center><strong>Wang Longke</strong><center>
   bio: Designs, talks, and writes about <strong>web</strong>, <strong>ethics</strong>, <strong>privacy</strong>, and dev. I share design tutorials, free resources and inspiration. Loves <a href="#">music</a> & riding his bicycle.
 
 
