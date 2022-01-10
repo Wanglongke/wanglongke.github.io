@@ -2,7 +2,7 @@
 # General Site Settings
 title: Pea&Pig
 logo: logo.svg # You can add own logo.
-description: Pea&Pig are always happy
+description: Pea&Pig are always happy.
 
 
 #-------------------------------
@@ -11,8 +11,7 @@ author:
   name: wanglongke
   image: 01.jpg
   say-hello: <center><strong>Wang Longke</strong></center>
-  bio: 我是一名算法工程师，在大连理工大学数学科学学院（https://www.dlut.edu.cn/）拿到了学士与硕士学位，所学专业为<strong>计算数学</strong>. 
-  主要研究方向为物理仿真与渲染，三维曲面重建，数字化人体表达。
+  bio: 我是一名算法工程师，在大连理工大学数学科学学院（https://www.dlut.edu.cn/）拿到了学士与硕士学位，所学专业为<strong>计算数学</strong>. 主要研究方向为物理仿真与渲染，三维曲面重建，数字化人体表达。
 
 
 #-------------------------------
