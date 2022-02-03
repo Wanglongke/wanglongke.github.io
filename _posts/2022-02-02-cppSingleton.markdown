@@ -37,7 +37,7 @@ private:
 {% endhighlight %}
 ## 方法B
 同样构造函数私有化，单例对象做为成员变量位于 ```class B``` 内部且私有化。虽然使用 ```private``` 关键字修饰该单例对象，但是由于其是静态变量，可以在外部进行初始化。
-{% highlight cpp %}
+```cpp
 class B {
 
 public:
@@ -60,7 +60,7 @@ private:
 	}
 
 };
-{% endhighlight %}
+```
 静态成员变量不接受 ```private``` 关键字修饰，因此可用以下方式赋予初值空指针 ```nullptr```, 对象的申请构造将在调用函数 ```getInstance()``` 时进行。
 {% highlight cpp %}
 B* B::instance_m = nullptr;
