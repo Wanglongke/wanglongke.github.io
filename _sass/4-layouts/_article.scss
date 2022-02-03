@@ -9,7 +9,7 @@
 
   .article__image {
     width: 100%;
-    display: inline-block;
+    display: block;
     background-position: center;
     background-size: cover;
     background-repeat: no-repeat;
@@ -20,7 +20,7 @@
 
     &:after {
       content: "";
-      display: inline-block;
+      display: table;
       width: 100%;
       padding-bottom: 70%;
     }
@@ -68,7 +68,7 @@
     }
 
     .article__footer {
-      display: inline-block;
+      display: flex;
       align-items: center;
 
       .read-more {
