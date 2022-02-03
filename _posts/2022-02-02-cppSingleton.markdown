@@ -2,7 +2,6 @@
 layout: post
 title:  cpp设计模式-单例模式
 date:   2022-02-02 18:05:55 +0300
-image:  10.jpg
 tags:   设计模式
 description: 单例设计模式的两种实现方式                                                                                                                                                            
 ---
