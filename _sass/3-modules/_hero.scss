@@ -11,7 +11,7 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
-    width: 500px;
+    width: 1000px;
     max-width: 100%;
     width: 100%;
     padding: 0 40px 0 0;
@@ -22,7 +22,7 @@
     }
 
     .hero__subtitle {
-      width: 500px;
+      width: 1000px;
       max-width: 100%;
       font-size: 18px;
       line-height: 32px;
@@ -70,13 +70,13 @@
       }
     }
 
-    .hero__image {
-      margin-bottom: 20px;
+    // .hero__image {
+    //   margin-bottom: 20px;
       
-      img {
-        box-shadow: none;
-      }
-    }
+    //   img {
+    //     box-shadow: none;
+    //   }
+    // }
   }
 
   @media only screen and (max-width: $mobile) {
