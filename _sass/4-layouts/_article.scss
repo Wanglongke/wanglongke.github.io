@@ -2,13 +2,13 @@
   margin-bottom: 40px;
 
   .article__wrapper {
-    display: flex;
+    display: block;
     align-items: center;
   }
 
   .article__image {
     width: 50%;
-    display: block;
+    display: inline-block;
     background-position: center;
     background-size: cover;
     background-repeat: no-repeat;
@@ -67,7 +67,7 @@
     }
 
     .article__footer {
-      display: flex;
+      display: inline-block;
       align-items: center;
 
       .read-more {
