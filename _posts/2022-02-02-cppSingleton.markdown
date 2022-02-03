@@ -10,76 +10,76 @@ tags:   设计模式
 
 ## 方法A
 首先构造函数要私有化，防止从外界构造多余的对象。这里将单例对象放在 ```getInstance()``` 内部，只有当需要一个对象的时候调用该函数才会申请一块空间构造此对象。
-{% highlight cpp %}
+```cpp
 class A {
 
 public:
-	static A* getInstance() {
-		static A* instance_ = nullptr;
-		if (instance_ == nullptr) {
-			instance_ = new A();
-		}
-		return instance_;
-	}
-	void init() {
-		std::cout << "A init" << std::endl;
-	}
-	~A() {
-	}
+    static A* getInstance() {
+        static A* instance_ = nullptr;
+        if (instance_ == nullptr) {
+            instance_ = new A();
+        }
+        return instance_;
+    }
+    void init() {
+        std::cout << "A init" << std::endl;
+    }
+    ~A() {
+    }
 private:
-	A() {
-		std::cout << "A Construct" << std::endl;
-	}
-	A(const A& a) {
+    A() {
+        std::cout << "A Construct" << std::endl;
+    }
+    A(const A& a) {
 
-	}
+    }
 };
-{% endhighlight %}
+```
 ## 方法B
 同样构造函数私有化，单例对象做为成员变量位于 ```class B``` 内部且私有化。虽然使用 ```private``` 关键字修饰该单例对象，但是由于其是静态变量，可以在外部进行初始化。
 ```cpp
 class B {
 
 public:
-	static B* getInstance() {
-		if (instance_m == nullptr) {
-			instance_m = new B();
-		}
-		return instance_m;
-	}
-	void init() {
-		std::cout << "B init" << std::endl;
-	}
+    static B* getInstance() {
+        if (instance_m == nullptr) {
+            instance_m = new B();
+        }
+        return instance_m;
+    }
+    void init() {
+        std::cout << "B init" << std::endl;
+    }
 private:
-	static B* instance_m;
-	B() {
-		std::cout << "B Construct" << std::endl;
-	}
-	B(const B& b) {
+    static B* instance_m;
+    B() {
+        std::cout << "B Construct" << std::endl;
+    }
+    B(const B& b) {
 
-	}
+    }
 
 };
 ```
 静态成员变量不接受 ```private``` 关键字修饰，因此可用以下方式赋予初值空指针 ```nullptr```, 对象的申请构造将在调用函数 ```getInstance()``` 时进行。
-{% highlight cpp %}
+```cpp
 B* B::instance_m = nullptr;
-{% endhighlight %}
+```
 
 ## 主函数测试
 
-{% highlight cpp %}
+```cpp
 int main(int argc, char* argv[]) {
-	A* a = A::getInstance();
-	B* b = B::getInstance();
-	a->init();
-	b->init();
+    A* a = A::getInstance();
+    B* b = B::getInstance();
+    a->init();
+    b->init();
 }
-{% endhighlight %}
+```
 命令台输出结果如下：
-{% highlight markdown %}
+```
 A Construct
 B Construct
 A init
 B init
-{% endhighlight %}
+```
