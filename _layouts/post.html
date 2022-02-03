@@ -109,13 +109,13 @@ layout: default
         <a href="{{ site.baseurl }}{{page.next.url}}">{{page.next.title}}</a>
         <i class="ion ion-md-arrow-forward"></i>
       </h2>
-      <p class="next__excerpt">
+      <!-- <p class="next__excerpt">
         {% if page.next.description %}
           {{ page.next.description }}
         {% else %}
           {{ page.next.content | strip_html | truncate: 110 }}
         {% endif %}
-      </p>
+      </p> -->
     </div>
     {% endif %}
   </div>
