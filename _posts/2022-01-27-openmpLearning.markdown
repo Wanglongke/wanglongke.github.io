@@ -27,4 +27,61 @@ OpenMP的基本要素：
 3） 环境变量（Environment Variables）  
 ## [基础语法](#目录)
 
+### 编译制导总览
+在 ```C/C++``` 程序中，OpenMP的所有编译制导指令以 ```pragma omp``` 开始， 后面跟具体的功能指令或命令，具有以下形式：  
+```cpp
+#pragma omp 指令 [子句...]
+```
+指令或命令可以单独出现，子句必须出现在制导指令之后。制导指令和子句按照功能大体上分成四类:  
+1）并行域控制  
+2）任务分担类  
+3）同步控制类  
+4）数据环境类  
+
+#### 指令  
+(1) [parallel](#parallel)  
+(2) [for](#for)  
+(3) [parallel for](#parallel-for)  
+(4) [sections](#sections)  
+(5) [parallel sections](#parallel-sections)  
+(6) [single](#single)  
+(7) [critical](#critical)  
+(8) [flush](#flush)  
+(9) [barrier](#barrier)  
+(10) [atomic](#atomic)  
+(11) [master](#master)  
+(12) [threadprivate](#threadprivate)  
+
+#### 子句：  
+
+(1) private:  
+(2) firstprivate:  
+(3) lastprivate:  
+(4) reduction:  
+(5) nowait:  
+(6) num_threads:  
+(7) schedule:  
+(8) shared:  
+(9) ordered:  
+(10) copyprivate:  
+(11) copyin:  
+(12) default:  
+
+```API函数```如下：  
+
+```环境变量```如下：  
+
+
+后面将详细介绍这些```指令```、```子句```、```API函数```的用法，这里仅仅列出供快速查询使用。
+
+### 详细用法
+
+#### [parallel](#指令)
+
+#### [for](#指令)
+
+#### [parallel for](#指令)
+
+#### [sections](#指令)
+
 ## [未完待续](#目录)
