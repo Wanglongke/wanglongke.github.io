@@ -26,7 +26,7 @@ Mircrosoft MPI(MS-MPI) 是微软的面向windows用户MPI编程的开发库。�
 1）在Visual Studio（我用的Visual Studio 2019）下新建空项目。  
 2) 设置```Include Directories``` 和 ```Library Directories```, 其中注意选择```X64```的平台与文件夹。 
 ![]({{ site.baseurl }}/images/mpi-003.png)  
-3) 在链接器-->输入-->添加依赖库,```msmpi.lib```  
+3) 在链接器-->输入-->添加依赖库 ```msmpi.lib```  
 4) 设置预处理器定义, 追加 ```MPICH_SKIP_MPICXX```  
 ![]({{ site.baseurl }}/images/mpi-004.png)  
 5） 代码生成，选择```Multi-threaded Debug(/MTd)```  
@@ -58,7 +58,6 @@ Process num: 4, id: 0
 Process num: 4, id: 3
 Process num: 4, id: 2
 Process num: 4, id: 1
-
 ```
 ## linux下环境配置
 
