@@ -2,7 +2,7 @@
 layout: post
 title:  openmp程序学习与训练(cpp+openmp)
 date:   2022-01-27 17:00:00 +0300
-tags:   并行程序设计
+tags:   ParallelProgramming
 description: 多线程并行工具的学习与练习                                                                                                                                                              
 ---
 

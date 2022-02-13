@@ -2,7 +2,7 @@
 layout: post
 title:  MPI(Massage Passing Interface)学习与训练
 date:   2022-02-11 15:30:00 +0300
-tags:   并行程序设计
+tags:   ParallelProgramming
 description: 高性能计算之MPI并行程序设计
 ---
 
