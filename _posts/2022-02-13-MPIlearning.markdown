@@ -21,21 +21,16 @@ description: 高性能计算之MPI并行程序设计
 Mircrosoft MPI(MS-MPI) 是微软的面向windows用户MPI编程的开发库。首先进入[Mircrosoft MPI](https://docs.microsoft.com/en-us/message-passing-interface/microsoft-mpi?redirectedfrom=MSDN)下载界面。  
 
 ![]({{ site.baseurl }}/images/mpi-001.png)  
-*Minimalism*  
 然后下载 ```msmoisetup.exe```, ```msmpisdk.msi```这两个文件并安装，默认会安装到Mircrosoft SDKs文件夹下。  
 ![]({{ site.baseurl }}/images/mpi-002.png)  
-*Minimalism*  
 1）在Visual Studio（我用的Visual Studio 2019）下新建空项目。  
 2) 设置```Include Directories``` 和 ```Library Directories```, 其中注意选择```X64```的平台与文件夹。 
 ![]({{ site.baseurl }}/images/mpi-003.png)  
-*Minimalism*    
 3) 在链接器-->输入-->添加依赖库,```msmpi.lib```  
 4) 设置预处理器定义, 追加 ```MPICH_SKIP_MPICXX```  
 ![]({{ site.baseurl }}/images/mpi-004.png)  
-*Minimalism*  
 5） 代码生成，选择```Multi-threaded Debug(/MTd)```  
 ![]({{ site.baseurl }}/images/mpi-005.png)  
-*Minimalism*  
 环境配置到此完成。新建```main.cpp```, 输入以下代码进行测试。
 ```cpp
 #include <iostream>
