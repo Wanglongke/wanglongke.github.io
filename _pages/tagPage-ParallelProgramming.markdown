@@ -1,6 +1,6 @@
 ---
 layout: page
 title:  ParallelProgramming
-permalink: /ParallelProgramming/
+permalink: /tag/ParallelProgramming/
 ---
 
