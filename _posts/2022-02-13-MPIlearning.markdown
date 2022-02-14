@@ -31,7 +31,7 @@ Mircrosoft MPI(MS-MPI) 是微软的面向windows用户MPI编程的开发库。�
 ![]({{ site.baseurl }}/images/mpi-004.png)  
 5） 代码生成，选择```Multi-threaded Debug(/MTd)```  
 ![]({{ site.baseurl }}/images/mpi-005.png)  
-环境配置到此完成。新建```main.cpp```, 输入以下代码进行测试。
+环境配置到此完成（其实应该还有一步，好像visual studio会帮你安装一个什么东西，我忘了^#^）。新建```main.cpp```, 输入以下代码进行测试。
 ```cpp
 #include <iostream>
 #include <mpi.h>
@@ -50,9 +50,9 @@ int main(int argc, char* argv[]) {
 ```
 Build完成后在 ```*.exe``` 所在文件夹下执行测试。
 ```
-mpiexec -np 4 .\learnOpenMPI.exe
+mpiexec -n 4 .\learnOpenMPI.exe
 ```
-其中```-np 4``` 是指用4个进程。 结果如下：
+其中```-n 4``` 是指用4个进程。 结果如下：
 ```
 Process num: 4, id: 0
 Process num: 4, id: 3
@@ -60,6 +60,17 @@ Process num: 4, id: 2
 Process num: 4, id: 1
 ```
 ## linux下环境配置
+命令行安装mpi库：
+```
+sudo apt-get install openmpi-bin openmpi-doc libopenmpi-dev
+```
+然后使用以上代码进行测试:  
+```
+touch main.cpp
+// copy code to main.cpp
+mpic++ main.cpp -o main
+mpirun -np 4 main
+```
 
 # [并行程序设计简介](#目录)
 并行计算机即能在同一时间内执行多条指令(或处理多个数据)的计算机，并行计算机是并行计算的物理载体。根据一个并行计算机能够同时执行的指令与处理数据的多少，可以把并行计算机分为**SIMD**(Single-Instruction Multiple-Data) 单指令多数据并行计算机和**MIMD**(Multiple-Instruction Multiple-Data)多指令多数据并行计算机。
