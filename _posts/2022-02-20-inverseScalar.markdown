@@ -108,7 +108,7 @@ $$f(x) = x^{-2} - r$$
 
 $$x_{n+1} = x_{n} - \frac{x^{-2}_{n} - r}{-2x^{-3}_{n}}$$       
 
-$$x_{n+1} = \frac{1}{2}x_{n}(3-rx^{2}{n})$$       
+$$x_{n+1} = \frac{1}{2}x_{n}(3-rx^{2}_{n})$$       
 
 通过迭代法可进行求解
 ```cpp
@@ -132,7 +132,8 @@ float inverseSqrtScalar(float s) {
 	return x1;
 }
 ```
-当求解得到 $\frac{1}{\sqrt{r}}$，则可计算        
+当求解得到 $\frac{1}{\sqrt{r}}$，则可计算      
+    
 $$\sqrt(r) = r(\frac{1}{\sqrt{r}})$$         
 
 --------------
