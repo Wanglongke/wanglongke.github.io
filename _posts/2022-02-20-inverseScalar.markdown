@@ -41,7 +41,7 @@ $$ g(x) = \frac{f(x)}{f^{'}(x)} $$
 
 则       
 
-$$ g(x_{i}) = g(r + \epsilon_{i}) \approx g(r) + \epsilon_{i}g^{'}(r) + \frac{\epsilon_{i}^{2}}{2}g^{''}{r} $$    
+$$ g(x_{i}) = g(r + \epsilon_{i}) \approx g(r) + \epsilon_{i}g^{'}(r) + \frac{\epsilon_{i}^{2}}{2}g^{''}(r) $$    
 
 $$ g^{'}(x) = 1 - \frac{f(x)f^{''}{x}}{[f^{'}(x)]^{2}}$$      
 
