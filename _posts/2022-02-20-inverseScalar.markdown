@@ -28,9 +28,12 @@ $$ \epsilon_{i+1} = \epsilon_{i} - \frac{f(x_{i})}{f^{`}(x_{i})} $$
 令  
 $$ g(x) = \frac{f(x)}{f^{'}(x)} $$  
 则  
-$$ g(x_{i}) = g(r + \epsilon_{i}) \approx g(r) + \epsilon_{i}g^{'}(r) + \frac{\epsilon_{i}^{2}}{2}g^{''}{r} $$  
+$$ g(x_{i}) = g(r + \epsilon_{i}) \approx g(r) + \epsilon_{i}g^{'}(r) + \frac{\epsilon_{i}^{2}}{2}g^{''}{r} $$    
+
 $$ g^{'}(x) = 1 - \frac{f(x)f^{''}{x}}{[f^{'}(x)]^{2}}$$  
-$$ g^{''}(x) = \frac{2f(x)f^{'}(x)[f^{''}(x)]^{2} - [f^{'}{x}]^{2}[f(x)f^{'''}(x)+f^{'}(x)f^{''}(x)]}{[f^{'}(x)]^{4}} $$
+
+$$ g^{''}(x) = \frac{2f(x)f^{'}(x)[f^{''}(x)]^{2} - [f^{'}{x}]^{2}[f(x)f^{'''}(x)+f^{'}(x)f^{''}(x)]}{[f^{'}(x)]^{4}} $$  
+
 由于 $f(r)=0$, 则可以计算  
 $$ g(r) = 0 $$  
 $$ g^{'}(r) = 1 $$  
