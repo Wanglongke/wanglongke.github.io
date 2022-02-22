@@ -4,6 +4,8 @@ url: "" # the base hostname & protocol for your site, e.g. http://example.com
 
 # Build settings
 markdown: kramdown
+kramdown:
+  math_engine: katex
 permalink: pretty
 plugins:
   - jekyll-paginate
