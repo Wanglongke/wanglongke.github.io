@@ -1,0 +1,93 @@
+---
+layout: post
+title:  MPI-三板斧-6个基本调用
+date:   2022-02-11 15:30:00 +0300
+tags:   ParallelProgramming
+description: 高性能计算之MPI并行程序设计
+---
+
+
+
+# [基本说明](#基本说明)
+
+MPI的调用接口庞大，但是有6个基本调用，理论上可以用这6个调用实现所有的通信功能。  
+```cpp
+int MPI_Init(int *argc, char ***argv);
+int MPI_Finalize(void);
+int MPI_Comm_rank(MPI_Comm comm, int *rank);
+int MPI_Comm_size(MPI_Comm comm, int *size);
+int MPI_Send(void *buf, int count, MPI_Datatype datatype, int dest, int tag, MPI_Comm comm);
+int MPI_Recv(void *buf, int count, MPI_Datatype datatype, int source, int tag, MPI_Comm comm, MPI_Status *status);
+```
+
+## MPI_Init(...)
+
+*MPI_Init*是MPI程序的第一个调用，是程序的第一条语句，用来完成初始化。不太知道这个初始化具体做了什么，大概率跟初始化系统，通信什么的有关。
+需要传入c/cpp的*main*函数的的两个参数的地址。
+
+## MPI_Finalize(...)
+
+*MPI_Finalize*是MPI程序的最后一个调用，用来结束MPI程序。  
+
+## MPI_Comm_rank(...)
+*MPI_Comm_rank*用来获取给定 **通信域** *MPI_Comm* 中的进程标识。MPI是多进程并行的，这个进程标识*rank*可以区分各个进程，从而在各个进程中做不同的事情，以实现进程并行和协作。
+
+## MPI_Comm_size(...)
+*MPI_Comm_size* 获取给定通信域内的进程总数，一般通过进程总数来进行任务分割。
+
+## MPI_Send(...)
+*MPI_Send* 将消息从本进程发送到指定进程，其进程标识为*dest*, 另外*buf*为数据指针，*count*为数据长度，*datatype*为MPI定义的数据类型，*tag*为自定义的通信标签，*comm*为通信域。
+
+## MPI_Recv(...)
+
+*MPI_Recv* 接受从*source* 进程发送过来的消息，*tag*，*comm*必须与发送端一致才能实现接收，*status*为返回状态，其源码如下：
+```cpp
+typedef struct MPI_Status
+{
+    int internal[2];
+
+    int MPI_SOURCE;
+    int MPI_TAG;
+    int MPI_ERROR;
+
+} MPI_Status;
+```
+明显的，可以从*MPI_Status*中获取发送数据端的进程号*MPI_SOURCE*，标签*MPI_TAG*，错误信息*MPI_ERROR*。
+
+## 一个简单的发送接收的例子
+
+进程0向其它所有进程发送消息。
+```cpp
+#include <iostream>
+#include <mpi.h>
+
+#define MSG_LENGTH 7
+
+int main(int argc, char* argv[])
+{
+
+	MPI_Init(&argc, &argv);
+	int myrank;
+	int pnum;
+	MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
+	MPI_Comm_size(MPI_COMM_WORLD, &pnum);
+
+	if (myrank == 0)
+	{
+		char message[MSG_LENGTH] = "Hello!";
+		for (int i = 1; i < pnum; ++i) 
+		{
+			MPI_Send(message, MSG_LENGTH, MPI_CHAR, i, 99, MPI_COMM_WORLD);
+		}
+	}
+	if (myrank != 0)
+	{
+		char message[MSG_LENGTH];
+		MPI_Status status;
+		MPI_Recv(message, MSG_LENGTH, MPI_CHAR, 0, 99, MPI_COMM_WORLD, &status);
+		std::cout << "My Process " << myrank <<" get message from process " << status.MPI_SOURCE << ": \"" << message << "\"" << std::endl;
+	}
+	MPI_Finalize();
+	return 0;
+}
+```

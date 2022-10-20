@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  cpp template 使用技巧
+title:  CPP Template 使用技巧
 date:   2022-10-17 11:00:00 +0300
 tags:   CPP
 description: cpp学习与使用
