@@ -1,0 +1,61 @@
+---
+layout: post
+title:  MPI-基本数据类型
+date:   2022-02-11 15:30:00 +0300
+tags:   ParallelProgramming
+description: 高性能计算之MPI并行程序设计
+---
+
+
+# [基本数据类型](#基本数据类型)
+
+| MPI预定义数据类型  | 相应的C数据类型      |  
+|  :---:            |   :---:             |
+| MPI_CHAR          |  signed char        |
+| MPI_SHORT         |  signed short int   |
+| MPI_INT           |  signed int         |
+| MPI_LONG          |  signed long int    |
+| MPI_UNSIGNED_CHAR |  unsigned char      |
+| MPI_UNSIGNED_SHOR |  unsigned short int |
+| MPI_UNSIGNED      |  unsinged int       |
+| MPI_UNSIGNED_LONG |  unsigned long int  |
+| MPI_FLOAT         |  float              |
+| MPI_DOUBLE        |  double             |
+| MPI_LONG_DOUBLE   |  long double        |
+| MPI_LONG_LONG_INT |  long long int      |
+| MPI_BYTE          |  无对应类型          |
+| MPI_PACKED        |  无对应类型          |
+
+
+数据类型 **MPI_BYTE** 和 **MPI_PACKED**没有相应于C的任意一个数据类型。其中 **MPI_BYTE** 一个值由一个字节组成，8个二进制位。另外 **MPI_PACKED** 表示打包的数据，这将在后面介绍。
+
+
+# [MPI消息传递过程与数据匹配](MPI消息传递过程与数据匹配)
+
+```
+数据发送缓冲区 --> 消息装配 --> 消息传递 --> 消息拆卸 --> 数据接受缓冲区
+```
+消息传递各阶段都需要类型匹配  
+1> 消息装配：发送缓冲区的变量类型 -- 发送操作的指定类型  
+2> 消息传递：发送操作指定类型     -- 接收操作指定类型  
+3> 消息拆卸: 接收到的消息类型     -- 接收操作指定类型  
+
+# [消息组成](消息组成)
+MPI消息分为**数据**和**信封**两部分：
+```
+数据：<起始地址， 数据个数，数据类型>
+信封：<源/目，表示， 通信域>
+```
+以*MPI_Send*和*MPI_Recv*为例:
+```cpp
+//           <---------------消息数据------------------>   <----------消息信封-------------->
+int MPI_Send(void *buf, int count, MPI_Datatype datatype, int dest, int tag, MPI_Comm comm);
+```
+```cpp
+//           <---------------消息数据-------------------> <------------------------消息信封---------------------->
+int MPI_Recv(void *buf, int count, MPI_Datatype datatype, int source, int tag, MPI_Comm comm, MPI_Status *status);
+```
+
+# [通信域](#通信域)
+
+MPI预定义了一个通信域**MPI_COMM_WORLD**，MPI初始化后便会产生。
