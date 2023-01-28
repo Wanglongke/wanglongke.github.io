@@ -1,0 +1,64 @@
+---
+layout: post
+title:  MPI-编写安全的MPI程序
+date:   2023-01-28 16:17:00 +0300
+tags:   ParallelProgramming
+description: 高性能计算之MPI并行程序设计
+---
+
+# [基本说明](#基本说明)
+
+编写安全的MPI程序，避免进程死锁。
+
+# [例子](#例子)
+
+(1) 下面的写法总会死锁
+```cpp
+// ...
+// pid: process id
+if(pid==0)
+{
+    MPI_Recv(void *buf, int count, MPI_Datatype datatype, int 1, int tag, MPI_Comm comm, MPI_Status *status);
+    MPI_Send(void *buf, int count, MPI_Datatype datatype, int 1, int tag, MPI_Comm comm);
+}
+else if(pid==1)
+{
+    MPI_Recv(void *buf, int count, MPI_Datatype datatype, int 0, int tag, MPI_Comm comm, MPI_Status *status);
+    MPI_Send(void *buf, int count, MPI_Datatype datatype, int 0, int tag, MPI_Comm comm);
+}
+```
+    
+![]({{ site.baseurl }}/images/mpi-006.png)
+
+(2) 下面写法不安全
+```cpp
+if(pid==0)
+{
+    MPI_Send(void *buf, int count, MPI_Datatype datatype, int 1, int tag, MPI_Comm comm);
+    MPI_Recv(void *buf, int count, MPI_Datatype datatype, int 1, int tag, MPI_Comm comm, MPI_Status *status);
+}
+else if(pid==1)
+{
+    MPI_Send(void *buf, int count, MPI_Datatype datatype, int 0, int tag, MPI_Comm comm);
+    MPI_Recv(void *buf, int count, MPI_Datatype datatype, int 0, int tag, MPI_Comm comm, MPI_Status *status);
+}
+```
+
+![]({{ site.baseurl }}/images/mpi-007.png)
+
+(3) 下面是安全的次序调用
+
+```cpp
+if(pid==0)
+{
+    MPI_Send(void *buf, int count, MPI_Datatype datatype, int 1, int tag, MPI_Comm comm);
+    MPI_Recv(void *buf, int count, MPI_Datatype datatype, int 1, int tag, MPI_Comm comm, MPI_Status *status);
+}
+else if(pid==1)
+{
+    MPI_Recv(void *buf, int count, MPI_Datatype datatype, int 0, int tag, MPI_Comm comm, MPI_Status *status);
+    MPI_Send(void *buf, int count, MPI_Datatype datatype, int 0, int tag, MPI_Comm comm);
+}
+```
+
+![]({{ site.baseurl }}/images/mpi-008.png)
