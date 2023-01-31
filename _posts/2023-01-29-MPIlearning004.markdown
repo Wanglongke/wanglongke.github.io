@@ -234,31 +234,11 @@ void JacobiIteration(Array2D<float>& arr, int nIte)
 	{
 		for (int ix = 0; ix < N; ++ix)
 		{
-			if ((ix + iy) % 2 == 0)
-			{
-				continue;
-			}
-
-			if (ix == 0)
-			{
-				continue;
-			}
-
-			if (ix == (N - 1))
-			{
-				continue;
-			}
-
-			if (iy == 1 && myid == 0) 
-			{ 
-				continue;
-			}
-			
-			if (iy == ny - 2 && myid == (numprocs - 1))
-			{
-				continue;
-			}
-
+			if ((ix + iy) % 2 == 0){continue;}
+			if (ix == 0){continue;}
+			if (ix == (N - 1)){continue;}
+			if (iy == 1 && myid == 0) {continue;}
+			if (iy == ny - 2 && myid == (numprocs - 1)){continue;}
 			arr(ix, iy) = 0.25f * (arr(ix + 1, iy) + arr(ix, iy + 1) + arr(ix - 1, iy) + arr(ix, iy - 1) - h * h * f(x(ix), y(myid * (ny - 2) + (iy - 1))));
 		}
 	}
@@ -268,31 +248,11 @@ void JacobiIteration(Array2D<float>& arr, int nIte)
 	{
 		for (int ix = 0; ix < N; ++ix)
 		{
-			if ((ix + iy) % 2 == 1)
-			{
-				continue;
-			}
-
-			if (ix == 0)
-			{
-				continue;
-			}
-
-			if (ix == (N - 1))
-			{
-				continue;
-			}
-
-			if (iy == 1 && myid == 0)
-			{
-				continue;
-			}
-
-			if (iy == ny - 2 && myid == (numprocs - 1))
-			{
-				continue;
-			}
-
+			if ((ix + iy) % 2 == 1){continue;}
+			if (ix == 0){continue;}
+			if (ix == (N - 1)){continue;}
+			if (iy == 1 && myid == 0){continue;}
+			if (iy == ny - 2 && myid == (numprocs - 1)){continue;}
 			arr(ix, iy) = 0.25f * (arr(ix + 1, iy) + arr(ix, iy + 1) + arr(ix - 1, iy) + arr(ix, iy - 1) - h * h * f(x(ix), y(myid * (ny - 2) + (iy - 1))));
 		}
 	}
@@ -311,7 +271,6 @@ float y(int j)
 	float yj = (float)j * h;
 	return yj;
 }
-
 
 float f(float xi, float yj)
 {
@@ -513,8 +472,6 @@ void JacobiIteration(Array2D<float>& arr, int nIte)
 	MPI_Sendrecv(&arr(0, 1), N, MPI_FLOAT, left, tag+1,
 					&arr(0, ny-1), N, MPI_FLOAT, right, tag+1, MPI_COMM_WORLD, &status);
 #else // USE_NULL_PROC
-
-
 	if (myid == 0)
 	{
 		MPI_Send(&arr(0, ny-2), N, MPI_FLOAT, myid + 1, tag, MPI_COMM_WORLD);
@@ -542,74 +499,30 @@ void JacobiIteration(Array2D<float>& arr, int nIte)
 		MPI_Sendrecv(&arr(0, 1), N, MPI_FLOAT, myid - 1, tag+1,
 						&arr(0, ny-1), N, MPI_FLOAT, myid + 1, tag+1, MPI_COMM_WORLD, &status);
 	}
-
 #endif // USE_NULL_PROC
-				
 	// red and black 
-	
 	for (int iy = 1; iy < ny-1; ++iy)
 	{
 		for (int ix = 0; ix < N; ++ix)
 		{
-			if ((ix + iy) % 2 == 0)
-			{
-				continue;
-			}
-
-			if (ix == 0)
-			{
-				continue;
-			}
-
-			if (ix == (N - 1))
-			{
-				continue;
-			}
-
-			if (iy == 1 && myid == 0) 
-			{ 
-				continue;
-			}
-			
-			if (iy == ny - 2 && myid == (numprocs - 1))
-			{
-				continue;
-			}
-
+			if ((ix + iy) % 2 == 0){continue;}
+			if (ix == 0){continue;}
+			if (ix == (N - 1)){continue;}
+			if (iy == 1 && myid == 0) {continue;}
+			if (iy == ny - 2 && myid == (numprocs - 1)){continue;}
 			arr(ix, iy) = 0.25f * (arr(ix + 1, iy) + arr(ix, iy + 1) + arr(ix - 1, iy) + arr(ix, iy - 1) - h * h * f(x(ix), y(myid * (ny - 2) + (iy - 1))));
 		}
 	}
-
 
 	for (int iy = 1; iy < ny - 1; ++iy)
 	{
 		for (int ix = 0; ix < N; ++ix)
 		{
-			if ((ix + iy) % 2 == 1)
-			{
-				continue;
-			}
-
-			if (ix == 0)
-			{
-				continue;
-			}
-
-			if (ix == (N - 1))
-			{
-				continue;
-			}
-
-			if (iy == 1 && myid == 0)
-			{
-				continue;
-			}
-
-			if (iy == ny - 2 && myid == (numprocs - 1))
-			{
-				continue;
-			}
-
+			if ((ix + iy) % 2 == 1){continue;}
+			if (ix == 0){continue;}
+			if (ix == (N - 1)){continue;}
+			if (iy == 1 && myid == 0){continue;}
+			if (iy == ny - 2 && myid == (numprocs - 1)){continue;}
 			arr(ix, iy) = 0.25f * (arr(ix + 1, iy) + arr(ix, iy + 1) + arr(ix - 1, iy) + arr(ix, iy - 1) - h * h * f(x(ix), y(myid * (ny - 2) + (iy - 1))));
 		}
 	}
