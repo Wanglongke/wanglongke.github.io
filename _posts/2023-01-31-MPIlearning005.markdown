@@ -1,0 +1,207 @@
+---
+layout: post
+title:  MPI-并行模式之主从模式
+date:   2023-01-31 15:30:00 +0300
+tags:   ParallelProgramming
+description:  高性能计算之MPI并行程序设计
+---
+
+# [基本说明](#基本说明)
+
+主从模式，分为主进程和从进程，主进程进行任务分配，从进程进行计算，然后主进程将从进程的结果进行汇总。   
+接下来用矩阵乘向量进行演示。计算$c=A*b$ , 主要过程如下：  
+1) 主进程将$b$广播发送到各个从进程；   
+2) 主进程循环将行向量$a_{i}$发送到从进程；
+3) 从进程计算$c_{i} = a_{i} * b$, 并将计算结果发送给到主进程；    
+4) 主进程检查是否有剩余数据未发送，待全部发送完成后，从各个从进程拿到计算结果，收到结果后，给从进程发送结束指令。   
+
+![]({{ site.baseurl }}/images/mpi-010.png)
+
+# [代码实现](#代码实现)
+
+首先修改Array类，添加模板参数，可以调整数组为**行优先**, 使得数组同行数据在内存上连续。   
+```cpp
+template<typename T, bool COL_MAJOR=true>
+struct Array2D
+{
+	Array2D(unsigned int nx_, unsigned int ny_)
+		:nx(nx_), ny(ny_), data(new T [nx_ * ny_])
+	{
+
+	}
+	Array2D(Array2D& arr) = delete;
+	Array2D& operator=(Array2D& arr) = delete;
+
+	unsigned int array_index(unsigned int ix, unsigned int iy)
+	{
+		if(COL_MAJOR){ return ix + iy * nx; }
+		else{ return iy + ix * ny; }
+	}
+
+	T& operator()(unsigned int ix, unsigned int iy)
+	{
+		return data[array_index(ix, iy)];
+	}
+
+	unsigned int nx;
+	unsigned int ny;
+	std::unique_ptr<T[]> data;
+};
+```
+指令**MPI_Bcast**将数据广播出去，这会将所有数据发送到其他进程，同时也包含自己。执行该调用时组内所有进程都使用同一个通信域comm, 和根标识root. 其执行结果是将根进程通信消息缓冲区中的消息拷贝到其他所有进程中去。
+```cpp
+int MPI_Bcast(void* buffer,int count,MPI_Datatype datatype,int root, MPI_Comm comm);
+```
+![]({{ site.baseurl }}/images/mpi-011.png)    
+矩阵乘向量的全部代码如下：   
+```cpp
+#include <mpi.h>
+#include <iostream>
+#include <string>
+#include <sstream>
+#include <algorithm>
+
+#include "Array2D.h"
+#include "MpiManger.h"
+
+
+#define USE_BCAST
+#define INVALID_TAG 2147483647
+
+const int rows = 100;
+const int cols = 200;
+const int master = 0;
+
+void master_process_task();
+
+void slave_process_task();
+
+int main(int argc, char* argv[])
+{
+	singleton::mpi().init(&argc, &argv);
+	
+	int myid = singleton::mpi().getRank();
+	int numprocs = singleton::mpi().getSize();
+
+	if (myid == master)
+	{
+		master_process_task();
+	}
+	else 
+	{
+		slave_process_task();
+	}
+	
+	singleton::mpi().finalize();
+	return 0;
+}
+
+
+void master_process_task()
+{
+	int myid = singleton::mpi().getRank();
+	int numprocs = singleton::mpi().getSize();
+
+	Array2D<float, false> A(rows, cols);
+	Array2D<float> b(cols, 1);
+	Array2D<float> c(rows, 1);
+
+	for (unsigned int i = 0; i < A.nx; ++i)
+	{
+		for (unsigned int j = 0; j < A.ny; ++j)
+		{
+			if (j > i) { A(i, j) = 1.0f; }
+			else { A(i, j) = 0.f; }
+		}
+	}
+
+	for (unsigned int j = 0; j < b.ny; ++j)
+	{
+		for (unsigned int i = 0; i < b.nx; ++i)
+		{
+			b(i, j) = 1.f;
+		}
+	}
+
+
+	MPI_Status status;
+#ifdef USE_BCAST
+	MPI_Bcast(&b(0, 0), cols, MPI_FLOAT, master, MPI_COMM_WORLD);
+#else
+	for (int ip = 1; ip < numprocs; ++ip) {
+		MPI_Send(&b(0, 0), cols, MPI_FLOAT, ip, 0, MPI_COMM_WORLD);
+	}
+#endif		
+	Array2D<float> a_i(cols, 1);
+	int num_sent = 0;
+	for (int i = 0; i < std::min(numprocs - 1, rows); ++i)
+	{
+		// take_row_data(A, a_i, i);
+		MPI_Send(&A(i, 0), cols, MPI_FLOAT, i + 1, i, MPI_COMM_WORLD);
+		num_sent++;
+	}
+
+	for (int i = 0; i < rows; ++i)
+	{
+		float ans;
+		MPI_Recv(&ans, 1, MPI_FLOAT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+		c(status.MPI_TAG, 0) = ans;
+		if (num_sent < rows)
+		{
+			// take_row_data(A, a_i, num_sent);
+			MPI_Send(&A(num_sent, 0), cols, MPI_FLOAT, status.MPI_SOURCE, num_sent, MPI_COMM_WORLD);
+			num_sent++;
+		}
+		else
+		{
+			MPI_Send(nullptr, 0, MPI_FLOAT, status.MPI_SOURCE, INVALID_TAG, MPI_COMM_WORLD);
+		}
+	}
+
+	std::cout << "Result: " << std::endl;
+	for (int j = 0; j < rows; ++j)
+	{
+		if (j % 10 == 0) {
+			std::cout << "\n";
+		}
+		std::cout << c(j, 0) << " ";
+	}
+}
+
+void slave_process_task()
+{
+	int myid = singleton::mpi().getRank();
+	int numprocs = singleton::mpi().getSize();
+	MPI_Status status;
+
+	Array2D<float> b(cols, 1);
+	Array2D<float> a_i(cols, 1);
+#ifdef USE_BCAST
+	MPI_Bcast(&b(0, 0), cols, MPI_FLOAT, master, MPI_COMM_WORLD);
+#else
+	MPI_Recv(&b(0, 0), cols, MPI_FLOAT, master, 0, MPI_COMM_WORLD, &status);
+#endif		
+	while (true)
+	{
+		MPI_Recv(&a_i(0, 0), cols, MPI_FLOAT, master, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+
+		if (status.MPI_TAG == INVALID_TAG) { break; }
+
+		float ans = 0.0f;
+		for (int i = 0; i < cols; ++i)
+		{
+			ans += a_i(i, 0) * b(i, 0);
+		}
+
+		MPI_Send(&ans, 1, MPI_FLOAT, master, status.MPI_TAG, MPI_COMM_WORLD);
+	}
+}
+```
+
+
+
+
+
+
+
+
