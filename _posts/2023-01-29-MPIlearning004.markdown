@@ -1,0 +1,689 @@
+---
+layout: post
+title:  MPI-并行模式之对等模式
+date:   2023-01-28 15:30:00 +0300
+tags:   ParallelProgramming
+description: 高性能计算之MPI并行程序设计
+---
+
+# [基本说明](#基本说明)
+
+MPI的两种最基本的并行程序设计模式为，对等模式和主从模式，可以说大部分程序都是这两种模式之一或二者的组合。   
+对等模式通过一个例子---Jacobi迭代来讲解。
+
+# [Jacobi迭代](#Jacobi迭代)
+
+对于求解二维Poisson方程，使用Jacobi迭代法完成，其过程如下。  
+对于边值问题:   
+$$\Delta u = 2 \pi^{2}e^{\pi(x+y)}(\sin\pi x \ \cos\pi y + \cos\pi x \ \sin\pi y) , $$   
+$$(x, y) \in G = (0, 1) \times (0, 1), $$   
+$$u=0， (x, y)\in G$$   
+其精确解为:   
+$$u(x, y) = e^{\pi(x+y)} \sin\pi x \ \sin\pi y$$
+
+对其使用五点差分格式进行离散化，使用Jacobi迭代法求解方程。      
+令
+$$f= 2 \pi^{2}e^{\pi(x+y)}(\sin\pi x \ \cos\pi y + \cos\pi x \ \sin\pi y)$$   
+则偏微分方程离散形式为：  
+$$\frac{u_{i+1,j} - 2u_{i, j} + u_{i-1,j}}{h^{2}} + \frac{u_{i,j+1} - 2u_{i, j} + u_{i,j-1}}{h^{2}} = f(x_{i}, y_{j})$$  
+即   
+$$u_{i+1,j} + u_{i,j+1} - 4u_{i, j} + u_{i-1,j} + u_{i,j-1} = h^{2}f(x_{i}, y_{j})$$   
+
+对于一般方程$Au=b$其Jacobi迭代形式为：   
+$$u^{k+1} = (I-D^{-1}A)u^{k} + D^{-1}b$$
+对于五点差分格式，其Jacobi如下:   
+$$u_{i,j}^{k+1} = \frac{1}{4}(u_{i+1,j}^{k} + u_{i,j+1}^{k} + u_{i-1,j}^{k} + u_{i,j-1}^{k} - h^{2}f(x_{i}, y_{j}))$$
+从此格式可以看出Jacobi迭代的局部性，因此具有良好的并行性。  
+此外还可以采用红黑高斯策略进行Jacobi迭代，节省内存消耗。即
+$$(i+j)\mod 2 == 0, \ \ \ \ \ \ u_{i,j}^{k+1/2} = \frac{1}{4}(u_{i+1,j}^{k} + u_{i,j+1}^{k} + u_{i-1,j}^{k} + u_{i,j-1}^{k} - h^{2}f(x_{i}, y_{j}))$$
+$$(i+j)\mod 2 == 1, \ \ \ \ \ \ u_{i,j}^{k+1} = \frac{1}{4}(u_{i+1,j}^{k+1/2} + u_{i,j+1}^{k+1/2} + u_{i-1,j}^{k+1/2} + u_{i,j-1}^{k+1/2} - h^{2}f(x_{i}, y_{j}))$$
+
+
+
+# [MPI实现Jacobi迭代](#MPI实现Jacobi迭代)
+
+具体实现如下图，每个进程负责一部分数据的计算，进程之间相互传递数据。假设有四个进程完成工作：  
+![]({{ site.baseurl }}/images/mpi-009.png)
+
+## [二维数组](#二维数组)
+
+```cpp
+template<typename T>
+struct Array2D
+{
+	Array2D(unsigned int nx_, unsigned int ny_)
+		:nx(nx_), ny(ny_), data(new T [nx_ * ny_])
+	{
+
+	}
+	Array2D(Array2D& arr) = delete;
+	Array2D& operator=(Array2D& arr) = delete;
+
+	unsigned int array_index(unsigned int ix, unsigned int iy)
+	{
+		return ix + iy * nx;
+	}
+
+	T& operator()(unsigned int ix, unsigned int iy)
+	{
+		return data[array_index(ix, iy)];
+	}
+
+	unsigned int nx;
+	unsigned int ny;
+	std::unique_ptr<T[]> data;
+};
+```
+## [MPI单例](#MPI单例)
+```cpp
+class MpiManager
+{
+
+public:
+	MpiManager(const MpiManager& mpi_mg) = delete;
+	MpiManager &operator=(const MpiManager& mpi_mg) = delete;
+
+	void init(int *argc, char ***argv)
+	{
+		MPI_Init(argc, argv);
+		MPI_Comm_rank(MPI_COMM_WORLD, &taskId);
+		MPI_Comm_size(MPI_COMM_WORLD, &numTasks);
+		MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_ARE_FATAL);
+	}
+
+	inline int getSize() const {
+		return numTasks;
+	}
+
+	inline int getRank() const {
+		return taskId;
+	}
+
+	inline void finalize() {
+		MPI_Finalize();
+	}
+
+private:
+	MpiManager()
+	{
+		
+	}
+
+private:
+	int numTasks;
+	int taskId;
+
+	friend MpiManager& mpi();
+};
+
+inline MpiManager& mpi()
+{
+	static MpiManager instance;
+	return instance;
+}
+```
+
+
+## [MPI实现Jacobi迭代](#MPI实现Jacobi迭代)
+
+初始化mpi，获取进程数与进程编号。
+```cpp
+
+const int N = 128;
+const float h = 1.0f / (N-1);
+const int tag = 10;
+
+int main(int argc, char* argv[])
+{
+    singleton::mpi().init(argc, argv);
+	int myid = singleton::mpi().getRank();
+	int numprocs = singleton::mpi().getSize();
+	std::cout << "Process " << myid << "/" << numprocs << " is alive" << std::endl;
+    // ...
+}
+```
+初始化该进程所计算的数组，数组多两列用于存放与其他进程进行通信的数据。
+```cpp
+int ny = N / numprocs + 2;
+Array2D<float> a(N, ny);
+// initialize array
+init_arr(a);
+```
+其中**init_arr(a)**负责初始化数组，主要职责在于初始化边界条件。
+```cpp
+void init_arr(Array2D<float>& arr)
+{
+	int ny = arr.ny;
+	for (int j = 0; j < ny; ++j)
+	{
+		for (int i = 0; i < N; ++i)
+		{
+			arr(i, j) = 0.0f;
+		}
+	}
+}
+```
+进入Jacobi迭代的流程控制。设置最大迭代次数20000。Jacobi迭代收敛速度较慢。
+```cpp
+int nIte = 0;
+const int maxIteration = 20000;
+while (nIte++ < maxIteration)
+{
+	JacobiIteration(a, nIte);
+	if (nIte % 10 == 0) 
+	{
+		print_error(nIte, a);
+	}
+}
+```
+下面是Jacobi迭代的主要过程，其包含两个部分，通信、计算。通信部分填充数组的第0列与第ny-1列。计算部分运用红黑高斯策略进行迭代计算，降低空间复杂度。计算时跳过边界的计算。   
+关于**MPI_PROC_NULL**，用于进行空进程填充，发送操作与接收操作遇到**MPI_PROC_NULL**会立即返回，即操作完成，可以从代码上看出，此操作使代码更加简洁，可读性更强。
+```cpp
+void JacobiIteration(Array2D<float>& arr, int nIte)
+{
+	int myid = singleton::mpi().getRank();
+	int numprocs = singleton::mpi().getSize();
+	int ny = arr.ny;
+
+	MPI_Status status;
+
+#ifdef USE_NULL_PROC
+	int left = myid - 1;
+	if (myid == 0) {left = MPI_PROC_NULL;}
+
+	int right = myid + 1;
+	if (myid == (numprocs - 1)) {right = MPI_PROC_NULL;}
+
+	MPI_Sendrecv(&arr(0, ny-2), N, MPI_FLOAT, right, tag,
+					&arr(0, 0), N, MPI_FLOAT, left, tag, MPI_COMM_WORLD, &status);
+
+	MPI_Sendrecv(&arr(0, 1), N, MPI_FLOAT, left, tag+1,
+					&arr(0, ny-1), N, MPI_FLOAT, right, tag+1, MPI_COMM_WORLD, &status);
+#else // USE_NULL_PROC
+
+
+	if (myid == 0)
+	{
+		MPI_Send(&arr(0, ny-2), N, MPI_FLOAT, myid + 1, tag, MPI_COMM_WORLD);
+	}
+	else if (myid == (numprocs-1))
+	{
+		MPI_Recv(&arr(0, 0), N, MPI_FLOAT, myid - 1, tag, MPI_COMM_WORLD, &status);
+	}
+	else
+	{
+		MPI_Sendrecv(&arr(0, ny-2), N, MPI_FLOAT, myid + 1, tag,
+						&arr(0, 0), N, MPI_FLOAT, myid - 1, tag, MPI_COMM_WORLD, &status);
+	}
+
+	if (myid == 0)
+	{
+		MPI_Recv(&arr(0, ny - 1), N, MPI_FLOAT, myid + 1, tag+1, MPI_COMM_WORLD, &status);
+	}
+	else if (myid == (numprocs - 1))
+	{
+		MPI_Send(&arr(0, 1), N, MPI_FLOAT, myid - 1, tag+1, MPI_COMM_WORLD);
+	}
+	else
+	{
+		MPI_Sendrecv(&arr(0, 1), N, MPI_FLOAT, myid - 1, tag+1,
+						&arr(0, ny-1), N, MPI_FLOAT, myid + 1, tag+1, MPI_COMM_WORLD, &status);
+	}
+
+#endif // USE_NULL_PROC
+				
+	// red and black 
+	
+	for (int iy = 1; iy < ny-1; ++iy)
+	{
+		for (int ix = 0; ix < N; ++ix)
+		{
+			if ((ix + iy) % 2 == 0)
+			{
+				continue;
+			}
+
+			if (ix == 0)
+			{
+				continue;
+			}
+
+			if (ix == (N - 1))
+			{
+				continue;
+			}
+
+			if (iy == 1 && myid == 0) 
+			{ 
+				continue;
+			}
+			
+			if (iy == ny - 2 && myid == (numprocs - 1))
+			{
+				continue;
+			}
+
+			arr(ix, iy) = 0.25f * (arr(ix + 1, iy) + arr(ix, iy + 1) + arr(ix - 1, iy) + arr(ix, iy - 1) - h * h * f(x(ix), y(myid * (ny - 2) + (iy - 1))));
+		}
+	}
+
+
+	for (int iy = 1; iy < ny - 1; ++iy)
+	{
+		for (int ix = 0; ix < N; ++ix)
+		{
+			if ((ix + iy) % 2 == 1)
+			{
+				continue;
+			}
+
+			if (ix == 0)
+			{
+				continue;
+			}
+
+			if (ix == (N - 1))
+			{
+				continue;
+			}
+
+			if (iy == 1 && myid == 0)
+			{
+				continue;
+			}
+
+			if (iy == ny - 2 && myid == (numprocs - 1))
+			{
+				continue;
+			}
+
+			arr(ix, iy) = 0.25f * (arr(ix + 1, iy) + arr(ix, iy + 1) + arr(ix - 1, iy) + arr(ix, iy - 1) - h * h * f(x(ix), y(myid * (ny - 2) + (iy - 1))));
+		}
+	}
+}
+```
+其中用到的辅助函数如下：
+``` cpp
+float x(int i)
+{
+	float xi = (float)i * h;
+	return xi;
+}
+
+float y(int j)
+{
+	float yj = (float)j * h;
+	return yj;
+}
+
+
+float f(float xi, float yj)
+{
+	float px = M_PI * xi;
+	float py = M_PI * yj;
+	float fij = 2.0f * M_PI * M_PI * std::exp(px + py) * (std::sin(px) * std::cos(py) + std::cos(px) * std::sin(py));
+	return fij;
+}
+```
+进行误差评估。首先计算各个进程的平均误差与最大误差，然后将各个进程的误差汇总。
+```cpp
+float solution(float xi, float yj)
+{
+	float px = M_PI * xi;
+	float py = M_PI * yj;
+	float uij = std::exp(px + py) * std::sin(px) * std::sin(py);
+	return uij;
+}
+
+void calculate_error(Array2D<float>& arr, float* avg_err, float* max_err)
+{
+	int myid = singleton::mpi().getRank();
+	int numprocs = singleton::mpi().getSize();
+	int ny = arr.ny;
+	float err_sum = 0.0f;
+	*max_err = 0.0f;
+	for (int iy = 1; iy < ny - 1; ++iy)
+	{
+		for (int ix = 0; ix < N; ++ix)
+		{
+			float err_i = std::abs(arr(ix, iy) - solution(x(ix), y(myid * (ny - 2) + (iy - 1))));
+			err_sum += err_i;
+			*max_err = std::max(*max_err, err_i);
+		}
+	}
+	*avg_err = err_sum / (float)(N * (ny - 2));
+}
+
+void print_error(int nIte, Array2D<float>& arr)
+{
+	int myid = singleton::mpi().getRank();
+	int numprocs = singleton::mpi().getSize();
+
+	MPI_Status status;
+	float avg_err, max_err;
+	calculate_error(arr, &avg_err, &max_err);
+
+	if (myid == 0)
+	{
+		for (int pid = 1; pid < numprocs; ++pid)
+		{
+			float err_i;
+			MPI_Recv(&err_i, 1, MPI_FLOAT, pid, tag, MPI_COMM_WORLD, &status);
+			avg_err += err_i;
+
+			MPI_Recv(&err_i, 1, MPI_FLOAT, pid, tag + 1, MPI_COMM_WORLD, &status);
+			max_err = std::max(err_i, max_err);
+		}
+
+		std::cout << "Iteration " << nIte << ", Avg error: " << avg_err / (float)(numprocs) << ", Max error: " << max_err << std::endl;
+	}
+	else
+	{
+		MPI_Send(&avg_err, 1, MPI_FLOAT, 0, tag, MPI_COMM_WORLD);
+
+		MPI_Send(&max_err, 1, MPI_FLOAT, 0, tag + 1, MPI_COMM_WORLD);
+	}
+}
+```
+
+## [全部源代码](#全部源代码)
+```cpp
+#define _USE_MATH_DEFINES
+#include <mpi.h>
+#include <sstream>
+#include <iostream>
+#include <array>
+#include <cmath>
+#include <algorithm>
+#include "Array2D.h"
+#include "MpiManger.h"
+
+
+// #define USE_NULL_PROC
+
+const int N = 128;
+const float h = 1.0f / (N-1);
+const int tag = 10;
+
+float x(int i)
+{
+	float xi = (float)i * h;
+	return xi;
+}
+
+float y(int j)
+{
+	float yj = (float)j * h;
+	return yj;
+}
+
+
+float f(float xi, float yj)
+{
+	float px = M_PI * xi;
+	float py = M_PI * yj;
+	float fij = 2.0f * M_PI * M_PI * std::exp(px + py) * (std::sin(px) * std::cos(py) + std::cos(px) * std::sin(py));
+	return fij;
+}
+
+float solution(float xi, float yj)
+{
+	float px = M_PI * xi;
+	float py = M_PI * yj;
+	float uij = std::exp(px + py) * std::sin(px) * std::sin(py);
+	return uij;
+}
+
+
+void print_array(Array2D<float>& arr);
+
+void JacobiIteration(Array2D<float>& arr, int nIte);
+
+void calculate_error(Array2D<float>& arr, float *avg_err, float *max_err);
+
+void print_error(int nIte, Array2D<float>& arr);
+
+void init_arr(Array2D<float>& arr);
+
+int main(int argc, char* argv[])
+{
+	singleton::mpi().init(&argc, &argv);
+
+	int myid = singleton::mpi().getRank();
+	int numprocs = singleton::mpi().getSize();
+	std::cout << "Process " << myid << "/" << numprocs << " is alive" << std::endl;
+
+	int ny = N / numprocs + 2;
+	Array2D<float> a(N, ny);
+	// initialize array
+	init_arr(a);
+
+	// print_array(a);
+
+	// Jacobi iteration
+	int nIte = 0;
+	const int maxIteration = 20000;
+	while (nIte++ < maxIteration)
+	{
+		JacobiIteration(a, nIte);
+		if (nIte % 10 == 0) 
+		{
+			print_error(nIte, a);
+		}
+	}
+
+	// print_array(a);
+	singleton::mpi().finalize();
+	return 0;
+}
+
+void print_array(Array2D<float>& arr)
+{
+	int myid = singleton::mpi().getRank();
+	std::stringstream initstream;
+	initstream << "Process " << myid << ":\n";
+	int nx = arr.nx;
+	int ny = arr.ny;
+	for (int i = 0; i < nx; ++i)
+	{
+		for (int j = 1; j < ny-1; ++j)
+		{
+			initstream << arr(i, j) << " ";
+		}
+		initstream << "\n";
+	}
+	std::cout << initstream.str() << std::endl;
+}
+
+
+void JacobiIteration(Array2D<float>& arr, int nIte)
+{
+	int myid = singleton::mpi().getRank();
+	int numprocs = singleton::mpi().getSize();
+	int ny = arr.ny;
+
+	MPI_Status status;
+
+#ifdef USE_NULL_PROC
+	int left = myid - 1;
+	if (myid == 0) {left = MPI_PROC_NULL;}
+
+	int right = myid + 1;
+	if (myid == (numprocs - 1)) {right = MPI_PROC_NULL;}
+
+	MPI_Sendrecv(&arr(0, ny-2), N, MPI_FLOAT, right, tag,
+					&arr(0, 0), N, MPI_FLOAT, left, tag, MPI_COMM_WORLD, &status);
+
+	MPI_Sendrecv(&arr(0, 1), N, MPI_FLOAT, left, tag+1,
+					&arr(0, ny-1), N, MPI_FLOAT, right, tag+1, MPI_COMM_WORLD, &status);
+#else // USE_NULL_PROC
+
+
+	if (myid == 0)
+	{
+		MPI_Send(&arr(0, ny-2), N, MPI_FLOAT, myid + 1, tag, MPI_COMM_WORLD);
+	}
+	else if (myid == (numprocs-1))
+	{
+		MPI_Recv(&arr(0, 0), N, MPI_FLOAT, myid - 1, tag, MPI_COMM_WORLD, &status);
+	}
+	else
+	{
+		MPI_Sendrecv(&arr(0, ny-2), N, MPI_FLOAT, myid + 1, tag,
+						&arr(0, 0), N, MPI_FLOAT, myid - 1, tag, MPI_COMM_WORLD, &status);
+	}
+
+	if (myid == 0)
+	{
+		MPI_Recv(&arr(0, ny - 1), N, MPI_FLOAT, myid + 1, tag+1, MPI_COMM_WORLD, &status);
+	}
+	else if (myid == (numprocs - 1))
+	{
+		MPI_Send(&arr(0, 1), N, MPI_FLOAT, myid - 1, tag+1, MPI_COMM_WORLD);
+	}
+	else
+	{
+		MPI_Sendrecv(&arr(0, 1), N, MPI_FLOAT, myid - 1, tag+1,
+						&arr(0, ny-1), N, MPI_FLOAT, myid + 1, tag+1, MPI_COMM_WORLD, &status);
+	}
+
+#endif // USE_NULL_PROC
+				
+	// red and black 
+	
+	for (int iy = 1; iy < ny-1; ++iy)
+	{
+		for (int ix = 0; ix < N; ++ix)
+		{
+			if ((ix + iy) % 2 == 0)
+			{
+				continue;
+			}
+
+			if (ix == 0)
+			{
+				continue;
+			}
+
+			if (ix == (N - 1))
+			{
+				continue;
+			}
+
+			if (iy == 1 && myid == 0) 
+			{ 
+				continue;
+			}
+			
+			if (iy == ny - 2 && myid == (numprocs - 1))
+			{
+				continue;
+			}
+
+			arr(ix, iy) = 0.25f * (arr(ix + 1, iy) + arr(ix, iy + 1) + arr(ix - 1, iy) + arr(ix, iy - 1) - h * h * f(x(ix), y(myid * (ny - 2) + (iy - 1))));
+		}
+	}
+
+
+	for (int iy = 1; iy < ny - 1; ++iy)
+	{
+		for (int ix = 0; ix < N; ++ix)
+		{
+			if ((ix + iy) % 2 == 1)
+			{
+				continue;
+			}
+
+			if (ix == 0)
+			{
+				continue;
+			}
+
+			if (ix == (N - 1))
+			{
+				continue;
+			}
+
+			if (iy == 1 && myid == 0)
+			{
+				continue;
+			}
+
+			if (iy == ny - 2 && myid == (numprocs - 1))
+			{
+				continue;
+			}
+
+			arr(ix, iy) = 0.25f * (arr(ix + 1, iy) + arr(ix, iy + 1) + arr(ix - 1, iy) + arr(ix, iy - 1) - h * h * f(x(ix), y(myid * (ny - 2) + (iy - 1))));
+		}
+	}
+	
+}
+
+
+void calculate_error(Array2D<float>& arr, float* avg_err, float* max_err)
+{
+	int myid = singleton::mpi().getRank();
+	int numprocs = singleton::mpi().getSize();
+	int ny = arr.ny;
+	float err_sum = 0.0f;
+	*max_err = 0.0f;
+	for (int iy = 1; iy < ny - 1; ++iy)
+	{
+		for (int ix = 0; ix < N; ++ix)
+		{
+			float err_i = std::abs(arr(ix, iy) - solution(x(ix), y(myid * (ny - 2) + (iy - 1))));
+			err_sum += err_i;
+			*max_err = std::max(*max_err, err_i);
+		}
+	}
+	*avg_err = err_sum / (float)(N * (ny - 2));
+}
+
+
+void print_error(int nIte, Array2D<float>& arr)
+{
+	int myid = singleton::mpi().getRank();
+	int numprocs = singleton::mpi().getSize();
+
+	MPI_Status status;
+	float avg_err, max_err;
+	calculate_error(arr, &avg_err, &max_err);
+
+	if (myid == 0)
+	{
+		for (int pid = 1; pid < numprocs; ++pid)
+		{
+			float err_i;
+			MPI_Recv(&err_i, 1, MPI_FLOAT, pid, tag, MPI_COMM_WORLD, &status);
+			avg_err += err_i;
+
+			MPI_Recv(&err_i, 1, MPI_FLOAT, pid, tag + 1, MPI_COMM_WORLD, &status);
+			max_err = std::max(err_i, max_err);
+		}
+
+		std::cout << "Iteration " << nIte << ", Avg error: " << avg_err / (float)(numprocs) << ", Max error: " << max_err << std::endl;
+	}
+	else
+	{
+		MPI_Send(&avg_err, 1, MPI_FLOAT, 0, tag, MPI_COMM_WORLD);
+
+		MPI_Send(&max_err, 1, MPI_FLOAT, 0, tag + 1, MPI_COMM_WORLD);
+	}
+}
+
+void init_arr(Array2D<float>& arr)
+{
+	int ny = arr.ny;
+	for (int j = 0; j < ny; ++j)
+	{
+		for (int i = 0; i < N; ++i)
+		{
+			arr(i, j) = 0.0f;
+		}
+	}
+}
+
+```
+
+
