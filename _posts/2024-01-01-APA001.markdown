@@ -65,21 +65,35 @@ int classifyUsingExact = GetClassification<Rational>(rp, 3, rv);
 ## [样例2](#样例2)
 计算两条n维直线之间的距离。  
 两个顶点$P_{0}$和$P_{1}$确定一条直线，参数表达为:  
+
 $$P(s)=(1-s)P_{0} + sP_{1}, s\in\mathbf{R}$$.   
+
 第二条直线由$Q_{0}$和$Q_{1}$确定, 参数表达为:  
+
 $$Q(t)=(1-t)Q_{0} + tQ_{1}, t\in \mathbf{R}$$.  
+
 两条直线上的点之间的距离的平方为:   
+
 $$F(s,t)=\|P(s)-Q(t)\|^{2} = as^{2}-2bst+ct^{2}+2ds-et+f$$  
+
 其中：  
+
 $$a=\|P_{1}-P{0}\|^{2}, \quad b=(P_{1}-P_{0})\cdot(Q_{1}-Q_{0}), \quad c=\|Q_{1}-Q_{0}\|^{2}, $$   
+
 $$d=(P_{1}-P_{0})\cdot(P_{0}-Q_{0}), \quad e=(Q_{1}-Q_{0})\cdot(P_{0}-Q_{0}), \quad f=\|P_{0}-Q_{0}\|^{2}$$  
+
 如果$\quad ac-b^{2}=\|(P_{1}-P_{0})\times (Q_{1}-Q_{0})\|^{2}=0$ 则两条直线平行。  
 如果$\quad ac-b^{2}>0$，则$F(s,t)$有全局最小值，当$\nabla F(s,t)=(0,0)$. 此时解$(\hat{s}, \hat{t})$分别代表两条直线距离最近是的参数。  
 接下来求解：
+
 $$\nabla F(s,t)=2(as-bt+d, -bs+ct-e)=(0,0)$$
+
 即    
+
 $$\left( \begin{array}{c} a & -b \\ -b & c\end{array} \right) \left( \begin{array}{c} s \\ t \end{array} \right) = \left( \begin{array}{c} -d \\ e \end{array} \right)$$
+
 其解为： 
+
 $$\left( \begin{array}{c} \hat{s} \\ \hat{t} \end{array} \right) = \frac{1}{ac-b^{2}} \left( \begin{array}{c} be-cd \\ ae-bd \end{array}\right)$$
 
 ```cpp
