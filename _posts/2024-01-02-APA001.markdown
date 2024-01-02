@@ -1,12 +1,14 @@
 ---
 layout: post
-title:  ArbitraryPrecisionArthmetic-高精度计算
+title:  APA-高精度计算
 date:   2024-01-02 15:30:00 +0300
-tags:   ArbitraryPrecisionArthmetic
+tags:   APA
 description:  高精度计算
 ---
 
 # [基本说明](#基本说明)
+
+Arbitrary Precision Arthmetic(APA)   
 
 在解决几何问题的过程中使用浮点数计算并不总是符合算法预期的，我们所要求的计算精度的鲁棒性当前的浮点数会不满足，如IEEE 754-2008标准定义了32位和64位浮点数，即使已经有24位和53位的计算精度。下面介绍几个样例：
 
