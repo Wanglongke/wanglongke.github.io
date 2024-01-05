@@ -27,10 +27,11 @@ flowchart TD
     F[iostream] --> J[stringstream]
 ```
 各个内存缓存继承关系如下
-```mermaid
+<span class="mermaid">
 flowchart TD  
     A[streambuf] --> B[stringbuf];
     A[streambuf] --> C[filebuf];
-```
+</span>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
 
 
