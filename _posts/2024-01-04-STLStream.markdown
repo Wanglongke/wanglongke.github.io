@@ -26,7 +26,7 @@ flowchart TD
     F[iostream] --> I[fstream];
     F[iostream] --> J[stringstream]
 ```
-各个内存缓存继承关系如下
+各个内存缓存继承关系如下   
 <span class="mermaid">
 flowchart TD  
     A[streambuf] --> B[stringbuf];
