@@ -1,7 +1,7 @@
 ---
 layout: post
 title:  STL-Stream
-date:   2024-01-05 15:30:00 +0300
+date:   2024-01-04 15:30:00 +0300
 tags:   cpp
 description:  cpp标准模板库的IO流
 ---
