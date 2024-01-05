@@ -107,13 +107,3 @@ layout: default
   {% if site.data.settings.disqus-identifier %} {% include disqus-comments.html %} {% endif %}
   </div>
 
-  {% if page.mermaid %}
-  <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
-  <script>
-    mermaid.initialize({
-      startOnLoad: true,
-      theme: 'default'
-    });
-    window.mermaid.init(undefined, document.querySelectorAll('.language-mermaid'));
-  </script>
- {% endif %}
