@@ -14,7 +14,7 @@ cpp标准模板库的IO流用来读入或写出。这里有文件流和数据流
 
 各个流之间继承关系如下    
 
-<span class="mermaid">
+```mermaid!
 flowchart TD  
     A[ios] --> B[istream];
     A[ios] --> C[ostream];
@@ -26,16 +26,14 @@ flowchart TD
     C[ostream] --> F[iostream];
     F[iostream] --> I[fstream];
     F[iostream] --> J[stringstream]
-</span>
-<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+```
 
 各个内存缓存继承关系如下    
 
-<span class="mermaid">
+```mermaid!
 flowchart TD  
     A[streambuf] --> B[stringbuf];
     A[streambuf] --> C[filebuf];
-</span>
-<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+```
 
 
