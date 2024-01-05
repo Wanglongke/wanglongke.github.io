@@ -13,6 +13,7 @@ cpp标准模板库的IO流用来读入或写出。这里有文件流和数据流
 # [继承关系图](#继承关系图)
 
 各个流之间继承关系如下    
+
 <span class="mermaid">
 flowchart TD  
     A[ios] --> B[istream];
@@ -28,6 +29,7 @@ flowchart TD
 </span>
 
 各个内存缓存继承关系如下    
+
 <span class="mermaid">
 flowchart TD  
     A[streambuf] --> B[stringbuf];
