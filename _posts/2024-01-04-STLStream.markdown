@@ -27,6 +27,7 @@ flowchart TD
     F[iostream] --> I[fstream];
     F[iostream] --> J[stringstream]
 </span>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
 
 各个内存缓存继承关系如下    
 
@@ -35,6 +36,6 @@ flowchart TD
     A[streambuf] --> B[stringbuf];
     A[streambuf] --> C[filebuf];
 </span>
-
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
 
 
