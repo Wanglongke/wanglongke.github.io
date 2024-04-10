@@ -1,0 +1,12 @@
+---
+layout: post
+title:  奇异递归模式-CRTP
+date:   2024-04-09 15:30:00 +0300
+tags:   设计模式
+description:  cpp奇异递归模式
+---
+
+# [基本说明](#基本说明)
+
+奇异递归模式(Curiously Recurring Template Pattern, CRTP), 是cpp模板编程时的一种模板使用方式，即把派生类作为基类的模板参数。更一般的称作F-bound polymorphism
+
