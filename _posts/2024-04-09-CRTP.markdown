@@ -8,5 +8,55 @@ description:  cpp奇异递归模式
 
 # [基本说明](#基本说明)
 
-奇异递归模式(Curiously Recurring Template Pattern, CRTP), 是cpp模板编程时的一种模板使用方式，即把派生类作为基类的模板参数。更一般的称作F-bound polymorphism
+奇异递归模式(Curiously Recurring Template Pattern, CRTP), 是cpp模板编程时的一种模板使用方式，即把派生类作为基类的模板参数。更一般的称作F-bound polymorphism，这出自于1989年的这篇论文，“F-bounded polymorphism for object-oriented programming”.
+
+## [什么是CRTP](#什么是CRTP)
+CRTP将派生类作为基类的模板参数，允许重写基类的方法，从而实现多态。它多态的实现发生在编译器，因此称为静态多态。   
+CRTP的实现通常如下：   
+```cpp
+template<typename Derived> 
+class Base{
+    ...
+};
+
+class Derived: public Base<Derived>{
+    ...
+};
+```
+
+## [CRTP的优缺点](#CRTP的优缺点)
+CRTP通过继承实现了**静态**多态，相对于使用虚函数的多态，其性能更好。通过测试虚函数的调用耗时大约是非虚的静态多态的9~10倍
+## [CRTP的诸多细节](#CRTP的诸多细节)
+
+### [禁止套娃](#禁止套娃)
+
+示例1：
+```cpp
+template<typename C>
+struct B
+{
+    typedef typename C::value_type value_type;
+    value_type* p_;
+};
+
+
+struct D : B<D>
+{
+    using value_type = float;
+};
+
+int main()
+{
+    D d{};
+    return 0;
+}
+
+```
+上述代码编译会失败(MSVC)
+```
+C2039  "value_type": 不是"D"的成员
+C3646  "value_type": 未知重写说明符
+C4430  "..."
+```
+
 
