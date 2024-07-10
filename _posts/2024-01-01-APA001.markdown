@@ -371,9 +371,9 @@ $$x+y=1.u*2^{p}+1.v*2^{q}=\hat{u}*2^{p-n}+\hat{v}*2^{q-m}$$
 
 此时计算取决于$p-n$和$q-m$的相对大小    
 
-### [The Case p-n>q-m]
+### [Case0](Case0)
 
-当$p-n>q-m$，求和可以写成：     
+当$p-n>q-m$，求和可以写成     
 
 $$\hat{u}*2^{p-n}+\hat{v}*2^{q-m}=(\hat{u}*2^{d}+\hat{v})*2^{q-m}=\hat{w^}*2^{q-m}$$
 
@@ -385,8 +385,8 @@ $$x+y=\hat{w}*2^{q-m}=1.w*2^{q-m+l}=1.w*2^{r}=z$$
 其中$r=q-m+l$, 其中$l$是$\hat{w}$首1-bit的位置(索引)。 这个加法的实现包含计算$\hat{u}*2^{d}$, 其用**位左移**运算实现。然后加上$\hat{v}$，然后就可以确定$\hat{w}$的首1-bit位置了。
 
 
-### [The Case p-n<q-m]
+### [Case1](Case1)
 
-### [The Case p-n=p-m]
+### [Case2](Case2)
 
 
