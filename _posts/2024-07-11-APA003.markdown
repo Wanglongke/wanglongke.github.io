@@ -1,8 +1,8 @@
 ---
 layout: post
-title:  APA-高精度计算-二进制科学计数
+title:  APA-二进制科学计数
 date:   2024-07-11 17:30:00 +0300
-tags:   APA
+tags:   ArbitraryPrecisionArthmetic
 description:  高精度计算
 ---
 

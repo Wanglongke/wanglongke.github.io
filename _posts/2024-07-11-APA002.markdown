@@ -1,8 +1,8 @@
 ---
 layout: post
-title:  APA-高精度计算-IEEE754-2008浮点数
+title:  APA-IEEE754-2008浮点数
 date:   2024-07-11 15:30:00 +0300
-tags:   APA
+tags:   ArbitraryPrecisionArthmetic
 description:  高精度计算
 ---
 
