@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  APA-高精度计算
+title:  APA-高精度计算-简介
 date:   2024-01-01 15:30:00 +0300
 tags:   APA
 description:  高精度计算
