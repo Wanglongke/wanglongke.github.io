@@ -85,7 +85,7 @@ $$a=\|P_{1}-P{0}\|^{2}, \quad b=(P_{1}-P_{0})\cdot(Q_{1}-Q_{0}), \quad c=\|Q_{1}
 $$d=(P_{1}-P_{0})\cdot(P_{0}-Q_{0}), \quad e=(Q_{1}-Q_{0})\cdot(P_{0}-Q_{0}), \quad f=\|P_{0}-Q_{0}\|^{2}$$  
 
 如果$\quad ac-b^{2}=\|(P_{1}-P_{0})\times (Q_{1}-Q_{0})\|^{2}=0$ 则两条直线平行。  
-如果$\quad ac-b^{2}>0$，则$F(s,t)$有全局最小值，当$\nabla F(s,t)=(0,0)$. 此时解$(\hat{s}, \hat{t})$分别代表两条直线距离最近是的参数。  
+如果$\quad ac-b^{2}>0$，则$F(s,t)$有全局最小值，当$\nabla F(s,t)=(0,0)$. 此时解$(\tilde{s}, \tilde{t})$分别代表两条直线距离最近是的参数。  
 接下来求解：
 
 $$\nabla F(s,t)=2(as-bt+d, -bs+ct-e)=(0,0)$$
@@ -96,7 +96,7 @@ $$\left( \begin{array}{c} a & -b \\ -b & c\end{array} \right) \left( \begin{arra
 
 其解为： 
 
-$$\left( \begin{array}{c} \hat{s} \\ \hat{t} \end{array} \right) = \frac{1}{ac-b^{2}} \left( \begin{array}{c} be-cd \\ ae-bd \end{array}\right)$$
+$$\left( \begin{array}{c} \tilde{s} \\ \tilde{t} \end{array} \right) = \frac{1}{ac-b^{2}} \left( \begin{array}{c} be-cd \\ ae-bd \end{array}\right)$$
 
 首先用双精度进行计算：
 ```cpp
@@ -320,10 +320,10 @@ $$r=1.c*2^{p}$$
 其中$c$有$n$位，$c_{0},...c_{n-1}$, 其中最后一位为$c_{n-1}=1$     
 其可改写为：   
     
-$$r=\hat{c}*2^{p-n}=\hat{c}*2^{b}$$    
+$$r=\tilde{c}*2^{p-n}=\tilde{c}*2^{b}$$    
     
-其中$\hat{c}$ 是$(n+1)$位整数， 其首位与尾位都是1   
-那么$r$可表示为：符号$\sigma$, $n+1$位整数$\hat{c}$, 指数$b$   
+其中$\tilde{c}$ 是$(n+1)$位整数， 其首位与尾位都是1   
+那么$r$可表示为：符号$\sigma$, $n+1$位整数$\tilde{c}$, 指数$b$   
 那么二进制科学计数的加，减，乘可以表示为正整数的运算
 
 ## [乘法](乘法)
@@ -337,12 +337,12 @@ $$x*y=1.v*2^{p+q}$$
 $$x*y=1.u*2^{p+q}$$          
 
 如果$u>0, v>0$， $u$有$n>0$位， $v$有$m>0$位，则:   
-$$x*y=1.u*2^{p}*1.v*2^{q}=\hat{u}*2^{p-n}*\hat{v}*2^{q-m}=\hat{u}*\hat{v}*2^{p-n+q-m}=\hat{w}*2^{p-n+q-m}$$  
+$$x*y=1.u*2^{p}*1.v*2^{q}=\tilde{u}*2^{p-n}*\tilde{v}*2^{q-m}=\tilde{u}*\tilde{v}*2^{p-n+q-m}=\tilde{w}*2^{p-n+q-m}$$  
 
 其中  
-$$\hat{w}=\hat{u}*\hat{v}$$   
+$$\tilde{w}=\tilde{u}*\tilde{v}$$   
 
-是奇数乘积（$u$和$v$的最后一位都是1）。$\hat{u}$有$n+1$位，$\hat{v}$有$m+1$位，所以$\hat{w}$是一个奇数，其有$n+m+1$或$n+m+2$位。   
+是奇数乘积（$u$和$v$的最后一位都是1）。$\tilde{u}$有$n+1$位，$\tilde{v}$有$m+1$位，所以$\tilde{w}$是一个奇数，其有$n+m+1$或$n+m+2$位。   
   
 **例如**：
 ```
@@ -352,11 +352,11 @@ smallest odd integers: 10001*1001 = 10011001  -->  n+m+1=8
 largest odd integers:  11111*1111 = 111010001 -->  n+m+2=9
 ```
 令$l=n+m+c$ 其中$c=0,or,c=1$    
-则$\hat{w}$是一个$(l+1)$位的奇数，  
+则$\tilde{w}$是一个$(l+1)$位的奇数，  
 
-$$\hat{w}=1w_{0}...w_{l-1}=1.w_{0}...w_{l-1}*2^{l}=1.w*2^{l}, w_{l-1}=1$$   
+$$\tilde{w}=1w_{0}...w_{l-1}=1.w_{0}...w_{l-1}*2^{l}=1.w*2^{l}, w_{l-1}=1$$   
     
-$$x*y=\hat{w}*2^{p-n+q-m}=1.w*2^{p-n+q-m+l}=1.w*2^{p+q+c}=1.w*2^{r}=z$$   
+$$x*y=\tilde{w}*2^{p-n+q-m}=1.w*2^{p-n+q-m+l}=1.w*2^{p+q+c}=1.w*2^{r}=z$$   
 其中$r=p+q+c$
 
 ## [加法](加法)
@@ -367,7 +367,7 @@ $$x=1.u*2^{p},y=1.v*2^{q}, z=1.w*2^{r}$$
 当$x=0$或$y=0$, 计算就十分简单。   
 当$x>0$且$y>0$, 其中$u$具有$n$位，其中$v$具有$m$位，它们的和为：  
 
-$$x+y=1.u*2^{p}+1.v*2^{q}=\hat{u}*2^{p-n}+\hat{v}*2^{q-m}$$   
+$$x+y=1.u*2^{p}+1.v*2^{q}=\tilde{u}*2^{p-n}+\tilde{v}*2^{q-m}$$   
 
 此时计算取决于$p-n$和$q-m$的相对大小    
 
@@ -375,41 +375,41 @@ $$x+y=1.u*2^{p}+1.v*2^{q}=\hat{u}*2^{p-n}+\hat{v}*2^{q-m}$$
 
 当$p-n>q-m$，求和可以写成     
 
-$$\hat{u}*2^{p-n} + \hat{v}*2^{q-m} = (\hat{u}*2^{d}+\hat{v}) *2^{q-m}= \hat{w}*2^{q-m}$$   
+$$\tilde{u}*2^{p-n} + \tilde{v}*2^{q-m} = (\tilde{u}*2^{d}+\tilde{v}) *2^{q-m}= \tilde{w}*2^{q-m}$$   
 
 其中$d=(p-n)-(q-m)$.      
-整数$\hat{u}*2^{d}$ 是偶数，因为$\hat{u}$是奇数且$d>0$. 整数$\hat{v}$是奇数. 因此$\hat{w}$是奇数。
+整数$\tilde{u}*2^{d}$ 是偶数，因为$\tilde{u}$是奇数且$d>0$. 整数$\tilde{v}$是奇数. 因此$\tilde{w}$是奇数。
 
-$$x+y=\hat{w}*2^{q-m}=1.w*2^{q-m+l}=1.w*2^{r}=z$$   
+$$x+y=\tilde{w}*2^{q-m}=1.w*2^{q-m+l}=1.w*2^{r}=z$$   
 
-其中$r=q-m+l$, 其中$l$是$\hat{w}$首1-bit的位置(索引)。 这个加法的实现包含计算$\hat{u}*2^{d}$, 其用**位左移**运算实现。然后加上$\hat{v}$，然后就可以确定$\hat{w}$的首1-bit位置了。
+其中$r=q-m+l$, 其中$l$是$\tilde{w}$首1-bit的位置(索引)。 这个加法的实现包含计算$\tilde{u}*2^{d}$, 其用**位左移**运算实现。然后加上$\tilde{v}$，然后就可以确定$\tilde{w}$的首1-bit位置了。
 
 
 ### [Case1](Case1)
 
 当$p-n<q-m$，求和可以写成：      
 
-$$\hat{u}*2^{p-n} + \hat{v}*2^{q-m} = (\hat{u}+\hat{v}*2^{d}) *2^{p-n}= \hat{w}*2^{p-n}$$   
+$$\tilde{u}*2^{p-n} + \tilde{v}*2^{q-m} = (\tilde{u}+\tilde{v}*2^{d}) *2^{p-n}= \tilde{w}*2^{p-n}$$   
 
 其中$d=(q-m)-(p-n)$.    
-整数$\hat{v}*2^{d}$是偶数因为$\hat{v}$是奇数且$d>0$. 整数$\hat{u}$是奇数. 因此$\hat{w}$是奇数。     
+整数$\tilde{v}*2^{d}$是偶数因为$\tilde{v}$是奇数且$d>0$. 整数$\tilde{u}$是奇数. 因此$\tilde{w}$是奇数。     
 
-$$x+y=\hat{w}*2^{p-n}=1.w*2^{p-n+l}=1.w*2^{r}=z$$
+$$x+y=\tilde{w}*2^{p-n}=1.w*2^{p-n+l}=1.w*2^{r}=z$$
 
-其中$r=p-n+l$, 其中$l$是$\hat{w}$首1-bit的位置(索引)。这个加法的实现包含计算$\hat{v}*2^{d}$, 其用**位左移**运算实现。然后加上$\hat{u}$，然后就可以确定$\hat{w}$的首1-bit位置了。
+其中$r=p-n+l$, 其中$l$是$\tilde{w}$首1-bit的位置(索引)。这个加法的实现包含计算$\tilde{v}*2^{d}$, 其用**位左移**运算实现。然后加上$\tilde{u}$，然后就可以确定$\tilde{w}$的首1-bit位置了。
 
 
 ### [Case2](Case2)
 
 当$p-n=q-m$，求和可以写成:    
 
-$$\hat{u}*2^{p-n} + \hat{v}*2^{q-m} = (\hat{u}+\hat{v}) *2^{q-m}= \hat{w}*2^{q-m}$$   
+$$\tilde{u}*2^{p-n} + \tilde{v}*2^{q-m} = (\tilde{u}+\tilde{v}) *2^{q-m}= \tilde{w}*2^{q-m}$$   
 
-整数$\hat{u}$和$\hat{v}$是奇数，因此$\hat{w}$是偶数. 设$l$是$\hat{w}$首1-bit的位置(索引)，设t是$\hat{w}$尾1-bit的位置。其中需要$l>=t>0$，可以对$hat{w}$位右移$t$位获得一个奇数$\hat{w}$, 此时$\hat{w}$首1-bit的位置(索引)$f=l-t$:     
+整数$\tilde{u}$和$\tilde{v}$是奇数，因此$\tilde{w}$是偶数. 设$l$是$\tilde{w}$首1-bit的位置(索引)，设t是$\tilde{w}$尾1-bit的位置。其中需要$l>=t>0$，可以对$\tilde{w}$位右移$t$位获得一个奇数$\hat{w}$, 此时$\hat{w}$首1-bit的位置(索引)$f=l-t$:     
 
-$$x+y=\hat{w}*2^{q-m}=w^{*}*2^{q-m+t}=1.w*2^{q-m+t+f}=1.w*2^{q-m+l}=1.w*2^{r}=z$$
+$$x+y=\tilde{w}*2^{q-m}=\hat{w}*2^{q-m+t}=1.w*2^{q-m+t+f}=1.w*2^{q-m+l}=1.w*2^{r}=z$$
 
-其中$r=q-m+l$。小数部分$w$(表示为整数)有$l-t$位，加法的实现涉及整数加法$\hat{w}=\hat{u}+\hat{v}$，然后确定$l$和$t$，$\hat{w}$位右移$t$位获得$w^{*}$, 最终得到$z=1.w*2^{r}$，无符号整数$w^{*}$和指数$b=q-m+t$.
+其中$r=q-m+l$。小数部分$w$(表示为整数)有$l-t$位，加法的实现涉及整数加法$\tilde{w}=\tilde{u}+\tilde{v}$，然后确定$l$和$t$，$\tilde{w}$位右移$t$位获得$\hat{w}$, 最终得到$z=1.w*2^{r}$，无符号整数$\hat{w}$和指数$b=q-m+t$.
 
 
 
