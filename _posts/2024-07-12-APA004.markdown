@@ -46,6 +46,172 @@ w_{3} & w_{2} & w_{1} & w_{0}
 \end{array}
 $$   
 
+对于第一项没有进位即$c_{0}=0$, 对于**uint32_t**的运算$p_{0}=u_{0}+v_{0}+c_{0}$, 最坏的情况下$p_{0}$成为**uin64_t**，当其大于$2^{32}$. 低位的32位提取出来作为$w_{0}=Low(p_{0})$, 高位的32位提取出来作为进位$c_{1}=High(p_{0})$. 对下一个$u_{i}$重复这个过程。     
 
+伪代码如下， 假定$i_{max}>=j_{max}$.  
+```cpp
+// inputs
+int32_t imax, jmax;
+uint32_t u[imax], v[jmax];
+// outputs
+int32_t kmax = imax + 1;
+uint32_t upv[kmax];
+uint64_t carry = 0;
+uint64_t sum;
+int32_t i, j;
+for(j=0; j<jmax; ++j)
+{
+  sum = u[j] + (v[j] + carry);
+  upv[j] = (uint32_t)(sum & 0x00000000FFFFFFFF);
+  carry = (sum>>32);
+}
 
+// we have no more v-blocks. propagate the carry-out    
+// if there is noe or copy the remaining blocks if there is not.
+if(carry > 0)
+{
+  for(i=jmax; i<imax; ++i)
+  {
+    sum = u[i] + carry;
+    upv[i] = (uint32_t)(sum & 0x00000000FFFFFFFF);
+    carry = (sum>>32);
+  }
+  if(carry>0)
+  {
+    upv[i] = (uint32_t)(carry & 0x00000000FFFFFFFF);
+  }
+}
+else
+{
+  for(i=jmax; i<imax; ++i)
+  {
+    upv[i] = u[i];
+  }
+}
 
+```
+
+## [减法](#减法)  
+
+对于减法$\hat{u}-\hat{v}$, 其中假设$\hat{u}>\hat{v}>0$, 那么减法可以转换为$\hat{u}+(\sim\hat{w}+1)$, 其中$\hat{w}$与$\hat{v}$相等，且与$\hat{u}$有相同的位数，这需要在$\hat{v}$左侧补一定数量的$0$.   
+
+然后按位取反即$\sim \hat{w}$. 由于$\hat{v}\neq 0$, 所以$\hat{w}\neq 0$, 那么$\sim \hat{w}$不会所有位等于1，那么$\sim \hat{w}+1$不会有进位。计算加法$\hat{u}+(\sim \hat{w} + 1)$ 可能会产生进位，但是这个进位与结果无关可以忽略掉。   
+
+伪代码如下，假定$i_{max}>=j_{max}$.  
+```cpp
+// inputs
+int32_t imax, jmax;
+uint32_t u[imag], v[jmax];
+
+//outputs
+int32_t kmax = imax + 1;   // = max(imax, jmax) + 1
+uint32_t umv[imax];        // u - v
+
+// Create the two's-complement number compV[] from v[]. Firstly negate   
+// the bits; secondly add 1.
+uint32_t compV[imax];
+uint64_t carry, sum;
+int32_t i;
+for(i=0; i<jmax; ++i)
+{
+  compV[i] = ~v[i];
+}
+for(/**/; i<imax; ++i)
+{
+  compV[i] = 0xFFFFFFFF;
+}
+carry=1;
+for(i=0; i<jmax; ++i)
+{
+  sum = compV[i] + carry;
+  compV[i] = (uint32_t)(sum & 0x00000000FFFFFFFF);
+  carry = (sum>>32);
+}
+// Add the numbers as positive intergers. Set the last block to zero int    
+// case no carry-out occurs
+umv[imax-1] = 0;
+carry = 0;
+for(i=0; i<imax; ++i)
+{
+  sum = compV[i] + (u[i]+carry);
+  umv[i] = (uint32_t) (sum & 0x00000000FFFFFFFF);
+  carry = (sum>>32);
+}
+
+```
+
+## [乘法](#乘法)
+
+乘法运算示意如下，假设$i_{max}=0,j_{max}=2$计算$\hat{w}=\hat{u}*\hat{v}$.     
+
+$$\begin{array}{cccc} 
+2 & 1 & 3 &   \\
+\hdashline
+  & 3 & 2 & 5 \\
+  &   &   & 7 \\
+\hline
+2 & 2 & 7 & 5 
+\end{array}  
+\qquad
+\begin{array}{cccc}
+c_{3} & c_{2} & c_{1} &        \\
+\hdashline
+      & v_{2} & v_{1} & v_{0}  \\
+      &       &       & u_{0}  \\
+\hline
+w_{3} & w_{2} & w_{1} & w_{0}  
+\end{array}
+\qquad
+\begin{array}{c}
+\textrm{carry bits}        \\
+\hat{v}           \\
+\hat{u}           \\
+\hat{u} * \hat{v}
+\end{array}
+$$   
+
+当$i_{max}=1$, 计算方式如下。      
+
+$$\begin{array}{ccccc} 
+  & 1 & 1 & 2 &   \\
+\hdashline
+  & 2 & 1 & 3 &   \\
+\hdashline
+  &   & 3 & 2 & 5 \\
+  &   &   & 5 & 7 \\
+\hline 
+0 & 0 & 1 &   &   \\
+\hdashline
+  & 2 & 2 & 7 & 5 \\
+1 & 6 & 2 & 5 &   \\
+\hline
+1 & 8 & 5 & 2 & 5 \\
+\end{array}  
+\qquad
+\begin{array}{ccccc}
+      & d_{3} & d_{2} & d_{1} &        \\
+\hdashline
+      & c_{3} & c_{2} & c_{1} &        \\
+\hdashline
+      &       & v_{2} & v_{1} & v_{0}  \\
+      &       &       & u_{1} & u_{0}  \\
+\hline
+e_{3} & e_{2} & e_{1} &       &        \\
+\hdashline
+      & w_{3} & w_{2} & w_{1} & w_{0}  \\
+q_{3} & q_{2} & q_{1} & q_{0} &        \\
+\hline
+s_{4} & s_{3} & s_{2} & s_{1} & s_{0}
+\end{array}
+\qquad
+\begin{array}{c}
+\textrm{Carry bits for} \quad \hat{q}=u_{1} * \hat{v}   \\
+\textrm{Carry bits for} \quad \hat{w}=u_{0} * \hat{v}   \\
+\hat{v}           \\
+\hat{u}           \\
+\textrm{Carry bits for} \quad \hat{w}+\hat{q} * 2^{32}   \\
+\hat{w} = \hat{u}_{0} * \hat{v}      \\
+\hat{q} = u_{1} * \hat{v}            \\
+\hat{u} * \hat{v}
+\end{array}
+$$  
