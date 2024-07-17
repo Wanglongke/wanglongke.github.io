@@ -17,3 +17,36 @@ $$\hat{v}=\sum_{j=0}^{j_{max}-1} v_{j}(2^{32})^{j}$$
 
 其中$u_{i},v_{j}$是32-bit无符号整数。
 
+## [加法](#加法)
+
+加法计算的样例如下，假设$i_{max}=3,j_{max}=2$，左侧是确切例子，右侧是一般化例子：         
+
+$$\begin{array}{cccc} 
+1 & 1 & 0 &   \\
+\hdashline
+  & 9 & 2 & 5 \\
+  &   & 8 & 3 \\
+\hline
+1 & 0 & 0 & 8 
+\end{array}  
+\qquad
+\begin{array}{cccc}
+c_{3} & c_{2} & c_{1} &        \\
+\hdashline
+      & u_{2} & u_{1} & u_{0}  \\
+      &       & v_{1} & v_{0}  \\
+\hline
+w_{3} & w_{2} & w_{1} & w_{0}  
+\end{array}
+\qquad
+\begin{array}{c}
+\textrm{carry bits}        \\
+\hat{u}           \\
+\hat{v}           \\
+\hat{u} + \hat{v}
+\end{array}
+$$   
+
+
+
+
