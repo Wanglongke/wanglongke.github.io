@@ -46,7 +46,7 @@ w_{3} & w_{2} & w_{1} & w_{0}
 \end{array}
 $$   
 
-对于第一项没有进位即$c_{0}=0$, 对于**uint32_t**的运算$p_{0}=u_{0}+v_{0}+c_{0}$, 最坏的情况下$p_{0}$成为**uin64_t**，当其大于$2^{32}$. 低位的32位提取出来作为$w_{0}=Low(p_{0})$, 高位的32位提取出来作为进位$c_{1}=High(p_{0})$. 对下一个$u_{i}$重复这个过程。     
+对于第一项没有进位即$c_{0}=0$, 对于“uint32_t”的运算$p_{0}=u_{0}+v_{0}+c_{0}$, 最坏的情况下$p_{0}$成为“uin64_t”，当其大于$2^{32}$. 低位的32位提取出来作为$w_{0}=Low(p_{0})$, 高位的32位提取出来作为进位$c_{1}=High(p_{0})$. 对下一个$u_{i}$重复这个过程。     
 
 伪代码如下， 假定$i_{max}>=j_{max}$.  
 ```cpp
@@ -328,4 +328,142 @@ else
   }
 }
 ```
+## [位运算-右移为奇数](#位运算-右移为奇数)
+
+加法和减法的计算中包含计算两个奇数的和或差。这两个运算的和都为偶数，我们需要把结果右移一些位使得其成为一个奇数，我们也需要计算科学二进制数数的指数值。    
+上一个位左移的例子也可以用来表示位右移，此时$\hat{v}$为输入，$\hat{u}$为输出。    
+尾代码如下：
+```cpp
+// inputs
+int32_t numUBits =<number of bits of u>;
+int32_t imax = 1 + (numUBits - 1) / 32;
+uint32_t u[imax];
+// Get the leading 1-bit.
+int32_t firstBitIndex = 32 * (imax - 1) + GetLeadingBit(u[imax-1]);
+// Get the trailing 1-bit
+int32_t i, j, lastBitIndex;
+for(i=0; i<max; ++i)
+{
+  if(u[i]>0)
+  {
+    lastBitIndex = 32 * i + GetTailingBit(u[i]);
+    break;
+  }
+}
+// outputs
+int32_t numShiftedUBits = firstBitIndex - lastBitIndex + 1;
+int32_t jmax = 1 + (numShiftedUBits - 1) / 32;
+uint32_t shiftedU[jmax];    // (u<<shift)
+int32_t shift;
+
+self.SetNumBits(firstBitIndex - lastBitIndex + 1);
+auto & bits = self.GetBits();
+int32_t const numBlocks = self.GetSize();
+// Get the location of the low-order 1-bit within the result.
+int32_t shiftBlock = lastBitIndex % 32;
+int32_t rshift = lastBitIndex % 32;
+if(rshift > 0)
+{
+  int32_t lshift = 32 - rshift;
+  i = shiftBlock;
+  uint32_t curr = u[i++];
+  for(j=0; i<imax; ++j, ++i)
+  {
+    uint32_t next = u[i];
+    shiftedU[j] = (curr >> rshift) | (next << lshift);
+    curr = next;
+  }
+  if(j < jmax)
+  {
+    shiftedU[j] = (curr >> rshift);
+  }
+}
+else
+{
+  for(j=0, i=shiftBlock; j < jmax; ++j, ++i)
+  {
+    shiftedU[j] = u[i];
+  }
+}
+shift = rshift + 32 * shiftBlock;
+```
+
+## [比较运算](#比较运算)
+
+判断两数是否相等，伪代码如下：
+
+```cpp
+bool Equal(UInteger u[imax], UInteger v[jmax])
+{
+  if(u.numBits != v.numBits)
+  {
+    return false;
+  }
+  if(u.numBits > 0)
+  {
+    for(int32_t i=imax-1; i>=0; --i)
+    {
+      if(u[i]!=v[i])
+      {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+```
+判断一个数是否小于另一个数：
+```cpp
+bool LessThan(UInteger u[imax], UInteger v[jmax]) const
+{
+  if(u.numBits > 0 && v.numBits > 0)
+  {
+    // the numbers must be compared as if their leading 1-bits are aligned.
+    int bitIndex0 = u.numBits - 1;
+    int bitIndex1 = v.numBits - 1;
+    int block0 = bitIndex0 / 32;
+    int block1 = bitIndex1 / 32;
+    int numBlockBits0 = 1 + (bitIndex0 % 32);
+    int numBlockBits1 = 1 + (bitIndex1 % 32);
+    uint64_t n0shift - u[block0];
+    uint64_t n1shift = v[block1];
+    while(block0>=0 && block1>=0)
+    {
+      // shift the bits in the leading blocks to the high-order bit.
+      uint32_t value0 = 
+        (uint32_t)((n0shift << (32-numBlockBits0)) & 0x00000000FFFFFFFF);
+      uint32_t value1 = 
+        (uint32_t)((n1shift << (32-numBlockBits1)) & 0x00000000FFFFFFFF);
+      // shift bits in the next block (if any) to fill the current block
+      if(--block0>=0)
+      {
+        n0shift = bits[block0];
+        value0 |= 
+          (uint32_t)((n0shift >> numBlockBits) & 0x00000000FFFFFFFF);
+      }
+      if(--block1>=0)
+      {
+        n1shift=nBits[block1];
+        value1 |= 
+          (uint32_t)((n1shift >> numBlockBits1) & 0x00000000FFFFFFFF);
+      }
+      if(value0<value1)
+      {
+        return true;
+      }
+      if(value0>value1)
+      {
+        return false;
+      }
+    }
+    return block0 < block1;
+  }
+  else
+  {
+    // one or both numbers are negative. The only time 'less than' is 'true' is when v is positive.
+    return (v.numBits > 0);
+  }
+}
+```
+
 
