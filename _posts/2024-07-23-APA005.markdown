@@ -1,0 +1,84 @@
+---
+layout: post
+title:  APA-浮点数与科学二进制的转换
+date:   2024-07-23 15:30:00 +0300
+tags:   ArbitraryPrecisionArthmetic
+description:  高精度计算
+---
+
+# [浮点数到科学二进制的转换](#浮点数到科学二进制的转换)
+
+接下来将描述"float"到科学二进制的转换。对于"double"类型，其过程相似。可以使用模板来处理不同的浮点类型。    
+浮点数的小数部分$0.t*2^{-126}$, 其中$t>0$是其23-bit的尾数。设$f$是其首1-bit的索引，设$l$是其尾1-bit的索引，则$t$就有$f-l+1$位，指数$b=-149+l$, 因此$0.t*2^{-126}= \hat{u} * 2^{p}$, 其中$u=t_{f}t_{f-1}...t_{l}$, 其中$p=-149+f$.   
+
+"subnormal float to BSNumber"伪代码如下：
+```cpp
+float subnormal;
+BSNumber bsn;
+uint32_t s = subnormal.GetSign();
+uint32_t e = subnormal.GetBiasedExponent();   // e=0 for subnormals
+uint32_t t = subnormal.GetTrailingSignificand();
+int32_t last = GetTrailingBit(t);
+int32_t diff = 23 - last;
+bsn.sign = (s>0 ? -1: 1);
+bsn.biasedExponent = -126 - diff;
+bsn.uinteger = (t>>last);
+```
+"normal float to BSNumber"伪代码如下：
+```cpp
+float normal;
+BSNumber bsn;
+uint32_t s = normal.GetSign();
+uint32_t e = normal.GetBiasedExponent(); // 0 < e < 255 for normals
+uint32_t t = normal.GetTrailingSignificand();
+if(t>0)
+{
+    int32_t last = GetTrailingBit(t);
+    int32_t diff = 23 - last;
+    bsn.sign = (s>0 ? -1: 1);
+    bsn.biasedExponent = e - 127 - diff;
+    bsn.uinteger = ((t | (1<<23)) >> last); 
+}
+else
+{
+    bsn.sign = (s>0 ? -1: 1);
+    bsn.biasedExponent = e - 127;
+    bsn.uinteger = 1;
+}
+```
+"infinity or NaN float to BSNumber"伪代码如下:
+```cpp
+float special;   // infinity, NaN
+BSNumber bsn;
+uint32_t s = special.GetSign();
+uint32_t e = special.GetBiasedExponent();       // e=255 for specials
+uint32_t t = special.GetTrailingSignificand();   
+if(t==0)   // infinities
+{
+    // warning: input is an infinity
+    bsn.sign = (s>0 ? -1: 1);
+    bsn.biasedExponent = 128;
+    bsn.uinteger = 1;
+}
+else
+{
+    // Error: input is a NaN(quiet or silent)
+    bsn.sign = 0;
+    bsn.biasedExponent = 0;
+    bsn.uinteger = 0;
+}
+```
+
+# [科学二进制到浮点数的转换](#科学二进制到浮点数的转换)
+
+由于"BSNumber"的运算会产生多于24-bit尾数的精度，这里选择在其转换为浮点数的时候，采用"round-to-nearest"和"ties-to-even"策略。    
+
+实数轴上浮点数的表示如下:   
+![]({{ site.baseurl }}/images/apa-001.jpg)  
+
+伪代码如下：
+```cpp
+
+```
+
+
