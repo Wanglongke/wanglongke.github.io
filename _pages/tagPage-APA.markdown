@@ -17,4 +17,4 @@ permalink: /tag/ArbitraryPrecisionArthmetic/
 
 5. [APA-浮点数与科学二进制的转换](https://wanglongke.github.io/2024/07/23/APA005/)
 
-6. [APA-科学二进制分数](https://wanglongke.github.io/2024/07/29/APA006/)
+6. [APA-科学二进制分数](https://wanglongke.github.io/2024/07/26/APA006/)

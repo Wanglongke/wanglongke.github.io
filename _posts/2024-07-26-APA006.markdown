@@ -1,7 +1,7 @@
 ---
 layout: post
 title:  APA-科学二进制分数
-date:   2024-07-29 15:30:00 +0300
+date:   2024-07-26 15:30:00 +0300
 tags:   ArbitraryPrecisionArthmetic
 description:  高精度计算
 ---
