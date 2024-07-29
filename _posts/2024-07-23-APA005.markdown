@@ -76,9 +76,99 @@ else
 实数轴上浮点数的表示如下:   
 ![]({{ site.baseurl }}/images/apa-001.jpg)  
 
+“underflow”意味着浮点数无法表示，其范围为$(0, 2^{-149})$.   
+"subnormals"的范围为$[2^{-149}, 2^{-126})$.   
+"normals"的范围为$[2^{-126}, 2^{128})$.    
+"overflow"范围为$(2^{128}, \infty)$, 其也不能表示为浮点数。   
+数$0.0_{-22}1*2^{-126}=2^{-149}$是最小的“subnormal”. 其中$0_{-22}$表示$0$重复$22$次。    
+数$0.1_{-23}*2^{-126}$是最大的"subnormal".     
+数$2^{-126}$是最小的"normal".    
+数$1.1_{-23}*2^{127}$是最大的"normal".   
+
+设$x$是BSNumber, 其位于$[0, 2^{-149})$之间。如果$x<=2^{-150}$成立，我们取值到零。如果$x>2^{-150}$成立，我们取值到$2^{-149}$.     
+
 伪代码如下：
 ```cpp
-
+BSNumber bsn;    // assume bsn is not zero
+uint32_t s = (bsn.sign < 0 ? 1: 0);
+uint32_t e;      // biased exponent for float
+uint32_t t;      // trailing significand for float
+int32_t p = bsn.GetExponent();        // biasedExponent + numBits - 1
+if(p<-149)
+{
+    if(p<-150 || bsn.uinteger==1)
+    {
+        // round to 0(when bsn.uinteger is 1, this is a tie, so round to even)
+        e = 0;
+        t = 0;
+    }
+    else
+    {
+        // round to 2^{-249}
+        e = 0;
+        t = 1;
+    }
+}
+// else: other case s discussed later
+float result = CreateIEEEFloat(s, e, t);   // as uint32_t, (s<<31) | (e<<23)) |t
 ```
+设$x=1.u*2^{p}$是BSNumber, 其位于$[2^{-149}, 2^{-126})$之间，那么$-149<=p<-126$.        
+
+$$x=(0.1u*2^{-\sigma})*2^{-126} = 0.0_{-|\sigma|}1u*2^{-126} = 0.\hat{t} * 2^{126}$$
+
+其中$\sigma=-(p+127)\in \{0,...,22\}$且$\hat{t}=0_{-|\sigma|}1u$是一个整数，且$\hat{u}=1u$.   
+
+我们需要从$\hat{t}$获取其前23-bit从而可以得到"subnormal"$y=0.t*2^{-126}$.    
+
+我们也可以提取$\hat{t}$前24-bit. 如果我们取其前23-bit, 则"subnormal"$y$是截断的。     
+
+然而我们需要对其进行"round-to-nearest-ties-to-even". 一般的，对非负数$i.f$进行“round”模式，其中$i$是整数部分，$f$是小数部分。如果$f< 1/2$成立，则取整到$i$即舍掉小数部分。如果$f>1/2$怎取整到$i+1$即入到整数。当$f=1/2$成立，如果$i$是偶数则舍掉小数，如果$i$是奇数则入到整数。这个逻辑的核心就是比较$f$和$1/2$的大小。因此我们这里取前23-bit作为整数部分，取额外1-bit进行判断，如果额外的1-bit不是最后一位，是0则舍，是1则入，因为最后一位是1. 如果是最后一位，这里就需要判断前一位，是0则舍，是1则入.    
+
+$$
+\begin{array}{c|c|c|c}
+\sigma & 0.\hat{t}  & \text{bit to extract} & \text{prefix index of}  \\
+       &            & \text{from } \hat{u}  & \text{first bit of } f  \\
+\hline 
+0      & 0.1u       & 24                    & 8                       \\
+1      & 0.01u      & 23                    & 9                       \\
+2      & 0.001u     & 22                    & 10                      \\
+.      & .          & .                     & .                       \\     
+.      & .          & .                     & .                       \\     
+.      & .          & .                     & .                       \\     
+22     & 0.00000000000000000000001u &2      & 30                      \\
+\hline         
+
+\end{array}
+$$
+
+伪代码如下：
+```cpp
+BSNumber bsn;          // assume bsn is not zero
+uint32_t s = (bsn.sign < 0 ? 1 : 0);
+uint32_t e;            // biased exponent for float
+uint32_t t;            // trailing significand for float
+int32_t p = bsn.GetExponet();        // biasedExponent + numBits - 1
+if(-149<=p && p<-126)
+{
+    int32_t sigma = -(p + 127);
+    t = bsn.GetSubnormalTrailing(sigma);
+    if(t & (1 << 23))
+    {
+        // the first 23 bits of hat{u} were all 1 and the remaing bits
+        // led to rounding up, so round up to the minimum normak.
+        e = 1;
+        t = 0;
+    }
+    else
+    {
+        e = 0;
+    }
+}
+// else: other cases discussed later
+float result = CreateIEEEFloat(s, e, t);    // as uint32_t, (s<<31) || (e<<23) | t
+```
+
+
+
 
 
