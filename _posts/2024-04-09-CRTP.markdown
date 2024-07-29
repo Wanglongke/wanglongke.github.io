@@ -17,10 +17,16 @@ CRTP的实现通常如下：
 template<typename Derived> 
 class Base{
     ...
+    void f(){
+        static_cast<Derived*>(this)->f();
+    }
 };
 
 class Derived: public Base<Derived>{
     ...
+    void f(){
+
+    }
 };
 ```
 
@@ -59,4 +65,107 @@ C3646  "value_type": 未知重写说明符
 C4430  "..."
 ```
 
+示例2：
+```cpp
+template<typename D> 
+class B
+{
+public:
+    ...
+    void f(){
+        static_cast<D*>(this)->f();
+    }
+};
+
+class D: public B<D>{
+    // 派生类没有f的实现
+};
+```
+上述代码编译期不会失败，也不会产生警告，错误发生在运行期，错误如下：
+```cpp
+Stack overflow 
+```
+也有人会出现以下错误：
+```cpp
+Process finished with exit code 139 (interruoted by signal 11: SIGSEGV)
+```
+
+### [析构](#析构)
+
+如下错误示例：
+```cpp
+B<D> *b = new D;
+...
+delete b;
+```
+上述代码无法调用D类的析构，可以编译通过，运行不报错，会造成D类无法析构，内存泄漏。
+
+```cpp
+template<typename D>
+class B
+{
+public:
+
+    B() {
+        std::cout << "B call construction" << std::endl;
+    }
+
+    ~B() {
+        std::cout << "B call deconstruction" << std::endl;
+    }
+
+    void f() {
+        std::cout << "B call function f" << std::endl;
+        static_cast<D*>(this)->f();
+    }
+};
+
+class D : public B<D> {
+
+public:
+
+    D() {
+        std::cout << "D call construction" << std::endl;
+    }
+
+    ~D() {
+        std::cout << "D call deconstruction" << std::endl;
+    }
+
+    void f() {
+        std::cout << "D call function f" << std::endl;
+    }
+};
+
+
+int main(int argc, char* argv[])
+{
+    B<D>* b = new D;
+    b->f();
+    delete b;
+    return 0;
+}
+```
+
+其运行结果如下：
+```cpp
+B call construction
+D call construction
+B call function f
+D call function f
+B call deconstruction
+```
+解决方法如下：   
+1. 写一个函数负责析构
+```cpp
+template<typename D>
+void Destroy(B<D>* b){
+    delete static_cast<D*>(b);
+}
+```
+2. 使用虚析构函数
+
+### [权限](#权限)
+
+CRTP
 
