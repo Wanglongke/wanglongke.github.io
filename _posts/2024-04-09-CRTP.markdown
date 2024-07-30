@@ -167,5 +167,158 @@ void Destroy(B<D>* b){
 
 ### [权限](#权限)
 
-CRTP
+CRTP需要所调用的函数都是可访问的，这个可访问有两种方式可以实现。其一，函数是公共函数；其二，设置友元。    
+公共函数在前面已经体现过了。下面是友元的示例：
+```cpp
+template<typename D>
+class B
+{
+public:
+    void f(){
+        static_cast<D*>(this)->f_impl();
+    }
+private:
+    void f_impl(){
+        std::cout << "B f_impl call" << std::endl;
+    };
+};
+
+class D: public B<D>
+{
+private:
+    void f_impl(){
+
+    }
+    friend class B<D>;   //没有此句编译失败
+};
+```
+
+## [CRTP作为委托模式](#CRTP作为委托模式)
+
+当使用CRTP静态多态的功能时，基类定义了接口，派生类负责实现，这种称为**静态接口**。    
+
+当直接使用派生类时，基类不再是接口，派生类也不仅仅是接口的实现。派生类**扩展**了基类接口，同时基类**委托**了一些行为给派生类。    
+
+### [扩展接口](#扩展接口)
+
+通过operator==()实现operator!=()      
+
+```cpp
+template<typename D>
+struct not_equal{
+    bool operator!=(const D&rhs) const {
+        return !static_cast<const D*>(this)->operator==(rhs);}
+    }
+};
+
+class C: public not_equal<C>{
+    int i_;
+public:
+    C(int i): i_(i){}
+    bool operator==(const C &rhs) const{
+        return i_==rhs.i_;
+    }
+};
+```
+
+或者可以对两个入参进行比较，这种情况下需要访问类的私有成员函数，需要将operator==设置为友元函数。
+```cpp
+template<typename D>
+struct not_equal
+{
+    friend bool operator!=(const D&lhs, const D& rhs)
+    {
+        return !(lhs==rhs);
+    }
+};
+
+class C: public not_equal<C>
+{
+private:
+    int i_;
+public:
+    C(int i): i_(i){
+
+    }
+    friend bool operator==(const C& lhs, const C& rhs){
+        return lhs.i_==rhs.i_;
+    }
+};
+
+class D: public not_equal<D>
+{
+private:
+    int i_;
+public:
+    D(int i): i_(i){}
+    // struct not_equal 直接使用了D的类型，它无法通过一个指向
+    // not_equal<D>的指针访问自己
+    bool operator==(const D& rhs)const{
+        return i_ == rhs.i_;
+    }
+};
+```
+### [实现对象注册](#实现对象注册)
+
+通常出于调试目的，我们需要知道某种类型当前产生了多少实例对象，产生一个维护此对象的一个列表。
+```cpp
+template<typename D>
+class registry
+{
+public:
+    static size_t count;
+    static D* head;
+    D* prev;
+    D* next;
+protected:
+    registry()
+    {
+        ++count;
+        prev = nullptr;
+        next = head;
+        head = static_cast<D*>(this);
+        if(next){
+            next->prev = head;
+        }
+    }
+
+    registry(const registry &)
+    {
+        ++count
+        prev = nullptr;
+        next = head;
+        head = static_cast<D*>(this);
+        if(next){
+            next->prev = head;
+        }
+    }
+
+    ~registry()
+    {
+        --count;
+        if(prev){
+            prev->next = next;
+        }
+        if(next){
+            next->prev = prev;
+        }
+        if(head==this){
+            head = next;
+        }
+    }
+};
+template <typename D> size_t registry<D>::count(0);
+template <typename D> D * registry<D>::head(nullptr);
+```
+
+这里用protected关键字将构造与拷贝函数保护起来，强制使用派生类来注册对象。用静态变量来进行派生类型的计数，用双向链表来记录所有的派生类型，用静态变量维护一个唯一的链表头。
+
+### [访问者](#访问者)
+
+
+
+
+
+
+
 
