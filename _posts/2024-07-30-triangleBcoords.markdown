@@ -52,7 +52,7 @@ $$a = \beta \cdot b + \gamma \cdot c$$
 
 等式两侧同时乘$b,c$则：
 
-$$a \cdot b = \beta \cdot b \cdot b + \gamma \cdot c \cdot b  \quad (1)$$
+$$a \cdot b = \beta \cdot b \cdot b + \gamma \cdot c \cdot b  \quad (1)$$       
 $$a \cdot c = \beta \cdot b \cdot c + \gamma \cdot c \cdot c \quad (2)$$
 
 从$(1)$式可得：
