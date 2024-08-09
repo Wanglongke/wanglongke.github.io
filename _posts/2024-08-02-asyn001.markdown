@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  cpp异步程序三板斧
+title:  cpp异步程序
 date:   2024-08-01 15:30:00 +0300
 tags:   CPP
 description:  cpp学习与使用
@@ -8,14 +8,289 @@ description:  cpp学习与使用
 
 # [简介](#简介)
 
+# [STL相关函数与类型](#STL相关函数与类型)
 
-# [三板斧之](#三板斧之)
+## [std::thread](#std::thread)
 
-# [三板斧之](#三板斧之)
+## [std::mutex](#std::mutex)
 
-# [三板斧之](#三板斧之)
+## [std::async](#std::async)
 
-# [进阶](#进阶)
+## [std::promise](#[std::promise)
+
+## [std::packaged_task](#std::packaged_task)
+
+## [std::condition_variable](#std::condition_variable)
+
+### [wait](#wait)
+
+***wait**有两个重载函数
+```cpp
+void wait(std::unique_lock<std::mutex>& lock);                  // (1) (since c++11)
+template<class Predicate>
+void wait(std::unique_lock<std::mutex>& lock, Predicate pred);  // (2) (since c++11)
+```
+(1) 1> 自动执行**lock.unlock()**，然后进入阻塞。
+    2> 当**notify_all()**或**notify_one()**被执行，线程阻塞将被解开。或者线程将被意外解开阻塞。
+    3> 当阻塞解开，执行**lock.lock()**;
+(2) 等同于：
+```cpp
+while(!pred())
+{
+    wait(lock);
+}
+```
+
+### [唤醒丢失与虚假唤醒](#唤醒丢失与虚假唤醒)
+
+**唤醒丢失**：唤醒丢失发生在发送信号的线程在接收信号的线程进入等待之前，就发送通知。结果就是通知消失。当通知消失，接收信号的线程将进入等待状态。
+
+**虚假唤醒**：虚假唤醒也叫意外唤醒，接收方没有通知也可能会被唤醒。(这是标准模板库的描述)。
+
+下面例子将帮助理解:
+```cpp
+
+std::mutex mutex_;
+std::condition_variable conVar;
+bool dataReady = false;
+
+void waitingForWork()
+{
+    std::cerr << "waiting..." << std::endl;
+    std::unique_lock<std::mutex> loc(mutex_);
+    conVar.wait(loc, [&](){return dataReady;});
+    std::cerr << "running..." << std::endl;
+}
+
+void setDataReady()
+{
+    {
+        std::lock_guard<std::mutex> loc(mutex_);
+        dataReady = true;
+    }
+    std::cerr << "data prepared, notify one" << std::endl;
+    conVar.notify_one();
+}
+
+int main()
+{
+    std::thread t1(waitingForWork);
+    std::thread t2(setDataReady);
+
+    t1.join();
+    t2.join();
+}
+
+```
+这里同步工作的完成分为以下几步:
+1) 创建两个线程**t1**和**t2**    
+2) 如果**t1**进入等待，然后**t2**进行对**t1**唤醒，唤醒分为两步：  
+   a) 设置变量**dataReady**为**true**;    
+   b) **conVar**执行唤醒;   
+   c) **t1**中的**wait**结束，跳出循环。
+3) 如果**t2**先执行，**t1**会被**mutex_**阻塞。   
+   a) 当设置变量**dataReady**为**true**完成，并且**lock_guard**完成析构;    
+   b) 此时**t1**才能解开**mutex**的阻塞;   
+   c) **unique_lock**加锁成功;   
+   d) **conVar.wait**无法进入循环;  
+   e) 任务在加锁的情况下执行; 
+
+当**wait**不加条件时，无条件等待会产生错过唤醒，或者虚假唤醒。  
+例1：移除**dataReady**，当上述**3**发生时，**t1**就错过了唤醒。
+```cpp
+while(!pred())
+{
+    // time window(1)
+    wait(lock);
+}
+```
+例2: 当移除**lock_guard**，那么上述**2**发生时，当进入**time window1**时，有可能会错过唤醒。
+
+# [混合栅栏](#混合栅栏)
+
+使用**condition_variable**和**mutex**实现一个异步程序的同步栅栏。使多个任务可以在一处互相等待。
+```cpp
+int32_t NUM_THREAD = 8;
+std::atomic_int32_t data(0);
+std::mutex printMutex;
+MixedBarrier barrier(NUM_THREAD);
+std::atomic_bool aborted(false);
+std::function<void(int32_t, int32_t)>  task =
+    [&](int32_t ithread, int32_t nthread)
+{
+    int32_t cur_data = data.fetch_add(1);
+    barrier.Wait(aborted);     // code line 1
+    {
+        std::lock_guard<std::mutex> lock(printMutex);
+        std::cout << "thread= " << ithread 
+                    << ", cur_data=" << cur_data 
+                    << ", final_data=" << data
+                    << std::endl;
+    }
+};
+
+std::vector<std::future<void>> threadTasks(NUM_THREAD);
+for (int32_t i = 0; i < NUM_THREAD; ++i)
+{
+    threadTasks[i] = std::async(std::launch::async, task, i, NUM_THREAD);
+}
+```
+运行结果如下：
+```cpp
+thread= 5, cur_data=5, final_data=8
+thread= 3, cur_data=3, final_data=8
+thread= 4, cur_data=4, final_data=8
+thread= 6, cur_data=6, final_data=8
+thread= 7, cur_data=7, final_data=8
+thread= 1, cur_data=1, final_data=8
+thread= 2, cur_data=2, final_data=8
+thread= 0, cur_data=0, final_data=8
+```
+当注释掉"code line 1"的时候，各个线程的结果没有得到同步，导致"final_data"不一致；
+```cpp
+thread= 0, cur_data=0, final_data=1
+thread= 1, cur_data=1, final_data=5
+thread= 2, cur_data=2, final_data=6
+thread= 3, cur_data=3, final_data=7
+thread= 4, cur_data=4, final_data=8
+thread= 5, cur_data=5, final_data=8
+thread= 6, cur_data=6, final_data=8
+thread= 7, cur_data=7, final_data=8
+```
+"MixedBarrier"的实现如下：
+```cpp
+class MixedBarrier
+{
+protected:
+    static constexpr int SPIN_ITERATIONS = 20000;
+
+public:
+
+    /**
+     * Constructor.
+     *
+     * @param   count Number of threads to wait for.
+     */
+
+    explicit MixedBarrier(uint32_t count)
+        : mCurrentCon(&mConVar1),
+        mPreviousCon(&mConVar2),
+        mCount(count),
+        mMax(count),
+        mSpaces(count)
+    {
+    }
+
+    /**
+     * Sets the size of the barrier, thus the number of threads to wait for on a sync point.
+     *
+     * @param   count Number of threads to wait on.
+     *
+     * @post The amount of threads the barriers waits on equals count.
+     */
+
+    void SetSize(uint32_t count)
+    {
+        mCount = count;
+        mMax = count;
+        mSpaces = count;
+    }
+
+    /**
+     * Waits for all the threads to reach the sync point, however the process can be aborted when `aborted` equals to
+     * true.
+     *
+     * @param [in,out]  aborted Check whether the process should be aborted.
+     *
+     * @pre if aborted == true, all threads quit computations.
+     *
+     * @post all threads have waited for each other to reach the barrier.
+     */
+
+    void Wait(const std::atomic_bool& aborted)
+    {
+        const uint32_t myGeneration = mGeneration;
+
+        if (aborted)
+        {
+            Abort();
+        }
+
+        if (!--mSpaces)
+        {
+            mSpaces = mMax;
+            std::lock_guard< std::mutex > condVarLoc(mCondVarMutex);
+            ++mGeneration;
+            Reset();
+        }
+        else
+        {
+            size_t i = 0;
+
+            while (mGeneration == myGeneration && ++i < SPIN_ITERATIONS)
+            {
+                if ((i & 127) == 0 && aborted)
+                {
+                    Abort();
+                }
+            }
+
+            if (i >= SPIN_ITERATIONS)
+            {
+                std::unique_lock< std::mutex > condVarLoc(mCondVarMutex);
+                mCurrentCon->wait(condVarLoc, [&] {return mGeneration != myGeneration || aborted; });
+            }
+        }
+
+        if (aborted)
+        {
+            mCurrentCon->notify_all();
+            throw std::runtime_error("Aborted");
+        }
+    }
+
+    void NotifyAbort()
+    {
+        mCurrentCon->notify_all();
+        ++mGeneration;
+    }
+
+private:
+
+    std::mutex mCondVarMutex;
+    std::condition_variable mConVar1;
+    std::condition_variable mConVar2;
+
+    std::condition_variable* mCurrentCon;
+    std::condition_variable* mPreviousCon;
+
+    uint32_t mCount;
+    uint32_t mMax;
+
+    std::atomic_uint_fast32_t mSpaces;
+    std::atomic_uint_fast32_t mGeneration;
+
+    void Reset()
+    {
+        mCount = mMax;
+        std::condition_variable* tmpCon = mCurrentCon;
+        mCurrentCon = mPreviousCon;
+        mPreviousCon = tmpCon;
+
+        tmpCon->notify_all();
+    }
+
+    void Abort()
+    {
+        mCurrentCon->notify_all();
+        throw std::runtime_error("Aborted");
+    }
+
+};
+```
+
+
+# [进阶之异步任务池](#进阶之异步任务池)
 
 
 
