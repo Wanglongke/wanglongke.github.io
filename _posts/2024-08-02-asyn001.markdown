@@ -146,6 +146,93 @@ value=9
 ```
 
 ## [std::packaged_task](#std::packaged_task)
+```cpp
+template<class> class packaged_task;    // not defined (1) (since c++11)
+template<class R, class ...ArgTypes>
+class packaged_task<R(ArgTypes...)>;    //             (2) (since c++11)
+```
+模板类**std::packaged_task**可以整合任何**callable**目标，如**function**, **lambda expression**, **bind expression**, **function object**.     
+
+
+类似与**std::promise**拥有一个共享状态**shared_state**, 可以使用成员函数**get_future**获取。
+```cpp
+int main()
+{
+    int res=0;
+
+    {
+        std::packaged_task<void(int, int, int&)> tsk_lambda(
+            [](int a, int b, int& res)
+            {
+                res = a + b;
+                std::cerr << a << "+" << b << "=" << res << "\n";
+            }
+        );
+        std::future<void> f0 = std::async(std::launch::async, std::move(tsk_lambda), 1, 2, std::ref(res));
+        f0.get();
+        std::cerr << "f0, res=" << res << std::endl;
+    }
+    {
+        std::function<void(int, int, int&)> tsk_lambda(
+            [](int a, int b, int& res)
+            {
+                res = a + b;
+                std::cerr << a << "+" << b << "=" << res << "\n";
+            }
+        );
+        std::packaged_task<void(int)> tsk_bind(
+            std::bind(std::move(tsk_lambda), std::placeholders::_1, 9, res));
+        std::future<void> f1 = std::async(std::launch::async, std::move(tsk_bind), 1);
+        f1.get();
+        std::cerr << "f1, res=" << res << std::endl;
+    }
+    {
+        std::function<void(int, int, int&)> tsk_lambda(
+            [](int a, int b, int& res)
+            {
+                res = a + b;
+                std::cerr << a << "+" << b << "=" << res << "\n";
+            }
+        );
+        std::packaged_task<void(int)> tsk_bind(
+            std::bind(tsk_lambda, std::placeholders::_1, 9, std::ref(res)));
+        std::future<void> f2 = std::async(std::launch::async, std::move(tsk_bind), 1);
+        f2.get();
+        std::cerr << "f2, res=" << res << std::endl;
+    }
+    
+    {
+        std::packaged_task<void(int, int, int&)> tsk_lambda(
+            [](int a, int b, int& res)
+            {
+                res = a + b;
+                std::cerr << a << "+" << b << "=" << res << "\n";
+            }
+        );
+        std::packaged_task<void(int)> tsk_bind
+            (std::bind(std::ref(tsk_lambda), std::placeholders::_1, 9, std::ref(res)));
+     
+        std::future<void> f3 = std::async(std::launch::async, std::ref(tsk_bind), 5);
+        f3.get();
+        std::cerr << "f3, res=" << res << std::endl;
+    }
+    return 0;
+}
+```
+
+输出如下：
+```cpp
+1+2=3
+f0, res=3
+1+9=10
+f1, res=3
+1+9=10
+f2, res=10
+5+9=14
+f3, res=14
+```
+
+特别注意使用**std::bind**时，如果绑定的是个需要引用的对象，这时可以使用**std::ref**完成引用。
 
 ## [std::condition_variable](#std::condition_variable)
 
