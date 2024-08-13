@@ -15,8 +15,135 @@ description:  cpp学习与使用
 ## [std::mutex](#std::mutex)
 
 ## [std::async](#std::async)
+函数**std::async**有两个重载：     
+```cpp
+template<class F, class.. Args>
+async(F&& f, Args&&... args);                            // (1) (since c++11)
 
-## [std::promise](#[std::promise)
+template<calss F, class... Args>
+async(std::lanuch policy, F&& f, Args&&... args);        // (2) (since c++11)
+```
+模板函数**std::async**会在另一个线程异步执行函数**f**, 然后返回**std::future**, 异步函数在未来时间执行完毕后，可以通过**std::future**获取到函数执行结果。      
+
+(1) 等同于用参数**policy=std::launch::async|std::lanuch::deferred**执行(2);    
+(2) 特定参数执行异步函数：          
+a)**std::launch::async** 意味着立即执行;     
+b)**std::launch::deferred** 意味着延迟执行;       
+
+参数：   
+**f**是可执行的函数或仿函数;       
+**args**是**f**的参数;    
+
+## [std::promise](#[std::promise) 
+```cpp
+template<class R>class promise;             //(1) (since c++11)
+template<class R>class promise<R&>;         //(2) (since c++11)
+template<>class promise<void>;              //(3) (since c++11)
+```
+模板类**std::promise**可以创建一个**std::future**，其可以方便的储存一个值(value)或异常(exception)，这个值或异常稍后通过**std::future**在异步过程中获取。**std::promise**对象注定只会被使用一次。      
+
+每个**promise**被关联到一个*共享状态(shared state)*，其含有一些状态信息和一个还未获取的*结果*(value or exception)。      
+
+一个**promise**可以用共享状态做三件事：      
+1) *make ready*: **promise**在*共享状态*存储了**value or exception**. 标记这个状态**准备**和**解阻塞**任何等待中的线程。      
+2) *release*: **promise**放弃对*shared state*的引用，如果这是最后一个引用，*shared state*会被自动销毁。对于**std::async**创造的*shared state*,这个操作不会阻塞。     
+3) *abandon*: **promise**存储了类型为**std::future_error**的异常，错误代码为**std::future_errc::broken_promise**, 使*shared state*先*ready*然后*release*        
+
+示例1：        
+```cpp
+void ThreadSafePrint(const std::string& str)
+{
+    static std::mutex mutex;
+    std::lock_guard<std::mutex> loc(mutex);
+    std::cerr << str;
+}
+
+void test5()
+{
+    std::function<void(std::promise<int>&)> taskPrepareFun = 
+    [](std::promise<int> &setter) 
+    {
+        // do something 
+        {
+            std::stringstream sscerr{};
+            sscerr << "prepare the task...\n";
+            ThreadSafePrint(sscerr.str());
+        }
+        Sleep(1000);
+        int res = 10;
+        setter.set_value(res);
+    };
+    std::function<void(std::future<int>&)> taskRunFun =
+        [](std::future<int>& getter)
+    {
+        {
+            std::stringstream sscerr{};
+            sscerr << "run task...\n";
+            ThreadSafePrint(sscerr.str());
+        }
+        Sleep(1000);
+        int curRes = 10;
+        {
+            std::stringstream sscerr{};
+            sscerr << "waiting prepare finish...\n";
+            ThreadSafePrint(sscerr.str()); 
+        }
+        int prepareRes = getter.get();
+        int finalRes = curRes + prepareRes;
+        {
+            std::stringstream sscerr{};
+            sscerr << "res=" << finalRes << '\n';
+            ThreadSafePrint(sscerr.str()); sscerr.clear();
+        }
+    };
+    std::promise<int> p;
+    std::future<int> f = p.get_future();
+    std::future<void>f0 = std::async(std::launch::async, taskPrepareFun, std::ref(p));
+    std::future<void>f1 = std::async(std::launch::async, taskRunFun, std::ref(f));
+    f1.get();
+}
+```
+输出为：    
+```cpp
+prepare the task...
+run task...
+waiting prepare finish...
+res=20
+```
+示例2：    
+
+函数**set_value_at_thread_exit**正如其名字一样，只有当线程销毁时，**set_value**才会生效。**谨慎使用**，否则将阻塞线程。
+
+```cpp
+void test4_fun0(std::future<int>& f)
+{
+    std::cerr << "wait..." << std::endl;
+    int value = f.get();
+    std::cerr << "value=" << value << std::endl;
+}
+
+void test4_fun1(std::promise<int>& p)
+{
+    p.set_value_at_thread_exit(9);
+}
+
+void test4()
+{
+    std::promise<int> p;
+    std::future<int> f = p.get_future();
+    std::future<void> t0 = std::async(std::launch::async, test4_fun0, std::ref(f));
+    {
+        std::thread t1 = std::thread(test4_fun1, std::ref(p));
+        t1.detach();
+    }
+    t0.get();
+}
+```
+输出为：    
+```cpp
+wait...
+value=9
+```
 
 ## [std::packaged_task](#std::packaged_task)
 
@@ -30,10 +157,10 @@ void wait(std::unique_lock<std::mutex>& lock);                  // (1) (since c+
 template<class Predicate>
 void wait(std::unique_lock<std::mutex>& lock, Predicate pred);  // (2) (since c++11)
 ```
-(1) 1> 自动执行**lock.unlock()**，然后进入阻塞。
-    2> 当**notify_all()**或**notify_one()**被执行，线程阻塞将被解开。或者线程将被意外解开阻塞。
-    3> 当阻塞解开，执行**lock.lock()**;
-(2) 等同于：
+(1) 1> 自动执行**lock.unlock()**，然后进入阻塞;          
+    2> 当**notify_all()**或**notify_one()**被执行，线程阻塞将被解开。或者线程将被意外解开阻塞;               
+    3> 当阻塞解开，执行**lock.lock()**.      
+(2) 等同于：     
 ```cpp
 while(!pred())
 {
@@ -82,21 +209,21 @@ int main()
 }
 
 ```
-这里同步工作的完成分为以下几步:
-1) 创建两个线程**t1**和**t2**    
-2) 如果**t1**进入等待，然后**t2**进行对**t1**唤醒，唤醒分为两步：  
+这里同步工作的完成分为以下几步:       
+1) 创建两个线程**t1**和**t2**;         
+2) 如果**t1**进入等待，然后**t2**进行对**t1**唤醒，唤醒分为两步：    
    a) 设置变量**dataReady**为**true**;    
    b) **conVar**执行唤醒;   
-   c) **t1**中的**wait**结束，跳出循环。
-3) 如果**t2**先执行，**t1**会被**mutex_**阻塞。   
+   c) **t1**中的**wait**结束，跳出循环。      
+3) 如果**t2**先执行，**t1**会被**mutex_**阻塞。    
    a) 当设置变量**dataReady**为**true**完成，并且**lock_guard**完成析构;    
-   b) 此时**t1**才能解开**mutex**的阻塞;   
-   c) **unique_lock**加锁成功;   
-   d) **conVar.wait**无法进入循环;  
-   e) 任务在加锁的情况下执行; 
+   b) 此时**t1**才能解开**mutex**的阻塞;     
+   c) **unique_lock**加锁成功;     
+   d) **conVar.wait**无法进入循环;    
+   e) 任务在加锁的情况下执行;     
 
 当**wait**不加条件时，无条件等待会产生错过唤醒，或者虚假唤醒。  
-例1：移除**dataReady**，当上述**3**发生时，**t1**就错过了唤醒。
+例1：移除**dataReady**，当上述**3)**发生时，**t1**就错过了唤醒。      
 ```cpp
 while(!pred())
 {
@@ -104,7 +231,7 @@ while(!pred())
     wait(lock);
 }
 ```
-例2: 当移除**lock_guard**，那么上述**2**发生时，当进入**time window1**时，有可能会错过唤醒。
+例2: 当移除**lock_guard**，那么上述**2)**发生时，当进入**time window1**时，有可能会错过唤醒。       
 
 # [混合栅栏](#混合栅栏)
 
