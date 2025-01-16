@@ -46,6 +46,8 @@ $$
 
 # [样例](样例)
 
-$$$$
+![]({{ site.baseurl }}/images/robustTriangleAreaAngle-001.jpg)    
+
+![]({{ site.baseurl }}/images/robustTriangleAreaAngle-002.jpg)
 
 
