@@ -21,7 +21,7 @@ description:  参数曲线
 
 $$p(t)=(1-t)^{2}p_{0}+2t(1-t)p_{1}+t^{2}p_{2}$$  
 
-如下图所示：
+如下图所示：   
 ![]({{ site.baseurl }}/images/ttf-001.png)
 
 这三个点分为曲线上的点和曲线外的点，两个端点在曲线上，中间的控制点在曲线外。    
@@ -68,11 +68,11 @@ $$p(t)=(1-t)^{2}p_{0}+2t(1-t)p_{1}+t^{2}p_{2}$$
 4. 每次字形轮廓从左到右或从上到下穿过射线时，计数减一(这种称为off-transition)。    
 5. 如果最终计数不为零，则该点为内部点，否则为外部点。
 
-on-transition如下：
+on-transition如下：    
 
 ![]({{ site.baseurl }}/images/ttf-006.png)
 
-off-transition如下：
+off-transition如下：    
 
 ![]({{ site.baseurl }}/images/ttf-007.png)
 
