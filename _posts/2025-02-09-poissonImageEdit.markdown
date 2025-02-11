@@ -57,15 +57,15 @@ $$\Delta \tilde{f}=0 \ \mathrm{over} \ \Omega, \ \tilde{f}|_{\partial \Omega}=(f
 
 # [离散化泊松求解](#离散化泊松求解)
 
-对于 $S$ 上的任一像素 $p$ 其四邻域(上下左右)表示为 $N_{p}$ 其邻域对表示为 $<p,q>,\ q\in N_{p}$ . 区域 $\Omega$ 的边界表示为 $\partial \Omega = \{p \in S \backslash \Omega : N_{p} \cap \Omega \ne \empty \}$ . 用 $f_{p}$ 表示 $f$ 位于 $p$ 处的值。    
+对于 $S$ 上的任一像素 $p$ 其四邻域(上下左右)表示为 $N_{p}$ 其邻域对表示为 $<p,q>,\ q\in N_{p}$ . 区域 $\Omega$ 的边界表示为 $\partial \Omega = \{p \in S \backslash \Omega : N_{p} \cap \Omega \ne \emptyset \}$ . 用 $f_{p}$ 表示 $f$ 位于 $p$ 处的值。    
 
 问题点的离散形式如下：
 
 $$\min_{f|_{\Omega}} \sum_{<p,q>,p\in\Omega} (f_{p}-f_{q}-v_{pq})^{2}, \ \mathrm{with} f_{q}=f^{\star}_{q}, \ \mathrm{for} \ \mathrm{all} \ q \in \partial \Omega \quad (6)$$
 
-其中 
+其中    
 
-$$v_{pq}=\mathbf{v}(\frac{p+q}{2}) \cdot \vec{pq} \ $$ 
+$$v_{pq}=\mathbf{v}(\frac{p+q}{2}) \cdot \vec{pq}$$ 
 
 其解必定满足以下线性方程:    
 
