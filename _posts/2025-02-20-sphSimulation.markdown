@@ -14,7 +14,9 @@ description:  流体仿真
 # [效果](#效果)
 
 粒子仿真效果：    
-![]({{ site.baseurl }}/images/sph-001.png)       
+<video src="../images/sph-001.avi"></video>
+
+![]({{ site.baseurl }}/images/sph-001.avi)       
 实时表面效果：      
 ![]({{ site.baseurl }}/images/sph-002.avi)       
 后期光线追踪渲染效果：    
