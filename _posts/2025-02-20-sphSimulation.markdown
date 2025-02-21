@@ -1,7 +1,7 @@
 ---
 layout: post
 title:  光滑粒子仿真
-date:   2025-01-15 15:30:00 +0300
+date:   2025-02-20 15:30:00 +0300
 tags:   ComputerGraphics
 description:  流体仿真
 ---
