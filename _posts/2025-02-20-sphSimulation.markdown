@@ -14,9 +14,9 @@ description:  流体仿真
 # [效果](#效果)
 
 粒子仿真效果：    
-![![]({{ site.baseurl }}/images/sph-001.png)](https://github.com/user-attachments/assets/c18f3f36-860e-471a-ab52-8affce67735d)      
+![视频](https://github.com/user-attachments/assets/c18f3f36-860e-471a-ab52-8affce67735d)      
 
-[![]({{ site.baseurl }}/images/sph-001.png)](https://github.com/user-attachments/assets/c18f3f36-860e-471a-ab52-8affce67735d)      
+[视频](https://github.com/user-attachments/assets/c18f3f36-860e-471a-ab52-8affce67735d)      
 
 实时表面效果：      
 ![]({{ site.baseurl }}/images/sph-002.avi)       
