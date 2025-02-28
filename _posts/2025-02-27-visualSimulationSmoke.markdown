@@ -15,11 +15,11 @@ description:  流体仿真
 # [效果](#效果)
 
 第一型边界：    
-[![]({{ site.baseurl }}/images/vss-001.jpg)](https://github.com/user-attachments/assets/9543df10-15b6-4787-900c-bdaf025af244)      
+[![]({{ site.baseurl }}/images/vss-001.jpg)](https://github.com/user-attachments/assets/a88121a7-e9cf-4632-bd23-e1571153d2fa)      
 
 
 第二型边界：   
-[![]({{ site.baseurl }}/images/vss-002.jpg)](https://github.com/user-attachments/assets/e641e75c-7c59-4895-b9b3-d1ddc3046f56)      
+[![]({{ site.baseurl }}/images/vss-002.jpg)](https://github.com/user-attachments/assets/52fa10e5-75d0-442f-9ec8-2359d82c72a2)      
 
 
 # [代码](#代码)
