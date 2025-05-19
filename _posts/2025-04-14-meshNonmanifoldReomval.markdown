@@ -240,12 +240,24 @@ void RemoveNonmanifoldEdge(Mesh<Real, IdxType> &mesh)
         for(IdxType vid: vids)
         {
             EdgeKey<false, IdxType> e(cvid, vid);
-            if(needSplitEdge.find(e)!=needSplitEdge.end()){
-                continue;
-            }
-
             const auto eit = edgeNbrFids.find(e);
             LogAssert(eit!=edgeNbrFids.end(), "failed find edge");
+            if(needSplitEdge.find(e)!=needSplitEdge.end()){
+                for(IdxType fid: eit->second)
+                {
+                    auto fidit = fid2fgid.find(fid);
+                    if(fidit==fid2fgid)
+                    {
+                        IdxType fgid = fsetgroups.size();
+                        fsetgroups.push_back(std::set<IdxType>{});
+                        std::set<IdxType> &fset = fsetgroups.back();
+                        fset.insert(fid);
+                        fid2fgid.insert({fid, fgid});
+                        ++count;
+                    }
+                }
+                continue;
+            }
             IdxType f0 = eit->second.front();
             auto f0it = fid2fgid.find(f0);
             IdxType fgid = 0;
