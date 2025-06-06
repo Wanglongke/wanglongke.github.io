@@ -9,7 +9,9 @@ description:  流体仿真
 
 # [简介](#简介)
 
-参考论文：Ihmsen Markus, Orthmann Jens,Solenthaler Barbara, Kolb Andreas, Teschner Matthias.SPH Fluids in Computer Graphics. 2014. Eurographics.     
+参考论文：   
+
+Ihmsen Markus, Orthmann Jens,Solenthaler Barbara, Kolb Andreas, Teschner Matthias.SPH Fluids in Computer Graphics. 2014. Eurographics.     
 
 # [效果](#效果)
 

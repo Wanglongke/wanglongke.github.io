@@ -1,0 +1,22 @@
+---
+layout: post
+title:  base64编解码
+date:   2025-02-27 15:30:00 +0300
+tags:   ComputerGraphics
+description:  编解码
+---
+
+# [简介](#简介)
+
+base64编码：将三字节长度的二进制数据编码为四个ASCII字符。      
+base64解码：将四个ASCII字符解码为三字节长度的二进制数据。  
+
+# [原理](#原理)
+
+## [编码](#编码)
+
+
+
+
+
+
