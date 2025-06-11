@@ -9,14 +9,103 @@ description:  编解码
 # [简介](#简介)
 
 base64编码：将三字节长度的二进制数据编码为四个ASCII字符。      
-base64解码：将四个ASCII字符解码为三字节长度的二进制数据。  
+base64解码：将四个ASCII字符解码为三字节长度的二进制数据。    
+这种形式的编解码，方便了二进制数据的传输与存储。如当使用xml或json进行数据存储时，其包含了结构形式的字符如“<”、">"、"{"、"}"，而二进制数据会影响其结构数据的解析。此时对数据进行编码将非常方便将数据写入文件，而不影响其本身的解析。
 
 # [原理](#原理)
 
 ## [编码](#编码)
 
+编码字符表如下：   
 
+``` cpp
+template<typename T>
+const char Base64Encoder<T>::enc64[65]=
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZ" \
+  "abcdefghijklmnopqrstuvwxyz0123456789+/";
+```
 
+其将3字节共24位分成4组，每组包含6位，能表示0~63共64个整数。上表共64个字符。以下就是编码过程。  
 
+```cpp
+template<typename T>
+void Base64Encoder<T>::encodeBlock( const unsigned char* data)
+{
+  ostr << enc64[ data[0] >> 2 ];
+  ostr << enc64[ ((data[0] & 0x03) << 4) | ((data[1] & 0xf0) >> 4) ];
+  ostr << (unsigned char) (enc64[ ((data[1] & 0x0f) << 2) | ((data[2] & 0xc0) >> 6) ]);
+  ostr << (unsigned char) (enc64[ data[2] & 0x3f ]);
+}
+```
 
+对于末端长度不足3字节的部分，进行补0处理。并且对于全部补零的分组编码为“=”, 下面是具体实现：
 
+```cpp
+template<typename T>
+void Base64Encoder<T>::encodeUnfinishedBlock( const unsigned char* data, int length )
+{
+  ostr << enc64[ data[0] >> 2 ];
+  ostr << enc64[ ((data[0] & 0x03) << 4) | ((data[1] & 0xf0) >> 4) ];
+  ostr << (unsigned char) (
+         length == 2 ?
+         enc64[ ((data[1] & 0x0f) << 2) | ((data[2] & 0xc0) >> 6) ] :
+         '='
+       );
+  ostr << (unsigned char) ( '=' );
+}
+```
+
+## [解码](#解码)
+
+解码是编码的逆过程，将4个字符转为3个字节。
+
+解码字符表如下：   
+
+```cpp
+template<typename T>
+const char Base64Decoder<T>::dec64[82]=
+  "|###}rstuvwxyz{#######>?@"\
+  "ABCDEFGHIJKLMNOPQRSTUVW######XYZ"\
+  "[\\]^_`abcdefghijklmnopq";
+```
+
+这里解码表是乱序排列的。编码表每个字符对应的10进制数如下：
+```cpp
+A        65
+...
+Z        90
+a        97
+...
+z        122
+0        48
+...
+9        57
+/        47
+=        61
+```
+
+过程如下：    
+
+```cpp
+template<typename T>
+unsigned char Base64Decoder<T>::getNext()
+{
+  unsigned char nextChar;
+  istr >> nextChar;
+  return (unsigned char) (dec64[nextChar - 43] - 62);
+}
+
+template<typename T>
+void Base64Decoder<T>::decodeBlock(unsigned char* data)
+{
+  unsigned char input[4];
+  input[0] = getNext();
+  input[1] = getNext();
+  input[2] = getNext();
+  input[3] = getNext();
+  data[0] = (unsigned char) (input[0] << 2 | input[1] >> 4);
+  data[1] = (unsigned char) (input[1] << 4 | input[2] >> 2);
+  data[2] = (unsigned char) (((input[2] << 6) & 0xc0) | input[3]);
+}
+
+```
