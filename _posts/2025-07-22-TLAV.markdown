@@ -1,0 +1,52 @@
+---
+layout: post
+title:  Thinking Like a Vertex
+date:   2025-07-22 15:30:00 +0300
+tags:   ParallelProgramming
+description:  分布式大型图处理
+---
+
+# [简介](#简介)
+
+参考文献：
+
+Mccune Robert Ryan，Weninger Tim, Madey Greg. Thinking Like a Vertex: a Survey of Vertex-Centric Frameworks for Large-Scale Distributed Graph Processing. 2015.     
+
+
+摘要：
+
+1. 大型图处理;    
+2. 迭代式图算法;    
+3. 并行算法框架;     
+4. 顶点中心化的并行方式;   
+
+
+## [MapReduce](#MapReduce)
+
+参考文献：
+
+Jeffrey Dean, Sanjay Ghemawat. MapReduce: Simplified Data Processing on Large Clusters. 
+
+2014年3月，IBM报告当今世界90%的数据是在近两年生产的，大数据处理的问题已经摆在了众人面前。分析系统开始从“共享的”、“中心化的”处理框架发展向“分布式的”、“去中心化的”的处理框架。    
+
+MapReduce框架展示了一种程序范式去充分发挥分布式算法的能力，而隐藏掉底层级的细节。MapReduce把任务分为**Map**阶段和**Reduce**阶段。**Map**函数处理一个键值对，生成一组中间级的键值对，**Reduce**函数合并所有具有相同键的中间级的值。
+
+具体处理过程如下：   
+
+![]({{ site.baseurl }}/images/TLAV-001.jpg)  
+
+## [Bulk Synchronous Parallel](#Bulk-Synchronous-Parallel)
+
+参考文献：
+
+Valiant Leslie G. A Bridging Model for Parallel Computation.   
+
+冯诺依曼模型的成功的事实是其在软件和硬件之间建立了一座高效的桥梁，高级的语言可以高效的在其上进行编译，可以高效的在硬件上运行。在并行计算任务上也对此样的桥梁热切需求，批量同步并行(BSP)就扮演了这个桥梁的角色。
+
+![]({{ site.baseurl }}/images/TLAV-002.jpg)  
+
+BSP模型充分利用了消息通讯协议(MPI)，其能避免高延迟读取，死锁，竞争条件。BSP是两步式执行过程，能进行迭代和同步。    
+1. 对本地数据执行计算任务;    
+2. 通讯计算结果，并重复这两步;   
+
+这个两步组成的一个迭代被称作**超级步**。
