@@ -84,5 +84,5 @@ BSP模型充分利用了消息通讯协议(MPI)，其能避免高延迟读取，
 
 ## [Asynchronous](#Asynchronous)
 
-## Hybrid(#Hybrid)
+## [Hybrid](#Hybrid)
 
