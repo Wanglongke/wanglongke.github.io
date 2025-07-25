@@ -50,3 +50,39 @@ BSP模型充分利用了消息通讯协议(MPI)，其能避免高延迟读取，
 2. 通讯计算结果，并重复这两步;   
 
 这个两步组成的一个迭代被称作**超级步**。
+
+## [Graph Parallel Systems](#Graph-Parallel-Systems)
+
+1. Pregel系统用BSP为图算法定制了API, 使其可以让工程师表达"think like a vertex". 在每个超级步，一个顶点执行用户定义的顶点函数，并把结果发送到相邻节点，超级步在一个同步栅栏处终止，且保证在当前超级步发送信息，在下一个超级步接收信息。顶点拥有两个状态“活跃的”和“不活跃的”。Pergel将在所有顶点终止时和没有信息交换时终止。 
+2. BSP是一个一般化的广泛应用的模型，在分布式处理器上设有全局同步栅栏。TLAV框架采用顶点中心化编程模型，和像Pregel和其它BSP的衍生的同步执行方式。另外有其它异步执行框架可以在某些具体算法上表现优异。
+3. MapReduce不同于TLAV和BSP,不能很好的支持迭代式算法。
+
+![]({{ site.baseurl }}/images/TLAV-003.jpg)  
+
+## [Example Single Source Shortest Path in TLAV paradigm](#Example)
+
+![]({{ site.baseurl }}/images/TLAV-004.jpg)  
+
+![]({{ site.baseurl }}/images/TLAV-005.jpg)  
+
+## [Four Pillars of TLAV Frameworks](#Four-Pillars-of-TLAV-Frameworks)
+
+1. Timing-用户定义的顶点程序以何种调度进行执行；
+2. Communication-顶点程序数据如何被其它顶点程序获取到；
+3. Execution Model-顶点程序执行和数据流的实现方式；
+4. Partitioning-图的顶点如何被分别存储在由多个工作机组成的系统上；
+
+# [Timing](#Timing)
+
+"Timing"描述了活跃的顶点如何被调度到计算任务上。其可以是同步的，可以是异步的，可以是两种的混合。（我的理解就是如何在合适的时间做合适的任务）
+
+![]({{ site.baseurl }}/images/TLAV-006.jpg)  
+
+## [Synchronous](#Synchronous)
+
+同步模型以BSP为基础。
+
+## [Asynchronous](#Asynchronous)
+
+## Hybrid(#Hybrid)
+
