@@ -246,7 +246,7 @@ void RemoveNonmanifoldEdge(Mesh<Real, IdxType> &mesh)
                 for(IdxType fid: eit->second)
                 {
                     auto fidit = fid2fgid.find(fid);
-                    if(fidit==fid2fgid)
+                    if(fidit==fid2fgid.end())
                     {
                         IdxType fgid = fsetgroups.size();
                         fsetgroups.push_back(std::set<IdxType>{});
