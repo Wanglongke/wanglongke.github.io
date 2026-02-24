@@ -39,7 +39,9 @@ Vu Hoang-Hiep, Labatut Patrick, Pons Jean-Philippe, Keriven Renaud. High accurac
 
 这里是26-02-24日最新的结果（代码仍在梳理中）。
 ![]({{ site.baseurl }}/images/photoCMR-003_l.png)
+
 ![]({{ site.baseurl }}/images/photoCMR-004_l.png)
+
 ![]({{ site.baseurl }}/images/photoCMR-005_l.png)
 
 # [代码](#代码)
