@@ -17,10 +17,10 @@ Vu Hoang-Hiep, Labatut Patrick, Pons Jean-Philippe, Keriven Renaud. High accurac
 
 多视图像：    
 
-![]({{ site.baseurl }}/images/photoCMR-data-001.png)  
+![]({{ site.baseurl }}/images/photoCMR-data-001_l.png)  
 
 
-![]({{ site.baseurl }}/images/photoCMR-data-002.png)
+![]({{ site.baseurl }}/images/photoCMR-data-002_l.png)
 
 
 # [硬件加速](#硬件加速)
