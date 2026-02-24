@@ -31,11 +31,16 @@ Vu Hoang-Hiep, Labatut Patrick, Pons Jean-Philippe, Keriven Renaud. High accurac
 
 初始模型：    
 
-![]({{ site.baseurl }}/images/photoCMR-002.png)
+![]({{ site.baseurl }}/images/photoCMR-002_l.png)
 
 优化后的模型：
 
-![]({{ site.baseurl }}/images/photoCMR-001.png)
+![]({{ site.baseurl }}/images/photoCMR-001_l.png)
+
+这里是26-02-24日最新的结果（代码仍在梳理中）。
+![]({{ site.baseurl }}/images/photoCMR-003_l.png)
+![]({{ site.baseurl }}/images/photoCMR-004_l.png)
+![]({{ site.baseurl }}/images/photoCMR-005_l.png)
 
 # [代码](#代码)
 
