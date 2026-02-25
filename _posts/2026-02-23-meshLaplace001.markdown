@@ -8,18 +8,227 @@ description:  Laplace
 
 # [简介](#简介)
 
-一般来说，三角网上的Laplace光滑有两种权重，一种是距离权重，一种是角度权重。距离权重计算速度快，角度权重鲁棒性好（非均匀网格表现优异）。
+一般来说，三角网上的Laplace光滑有两种权重，一种是拓扑权重，一种是余切权重。拓扑权重计算速度快但会模糊掉几何特征如锐利的棱角；余切权重鲁棒性好，非均匀网格表现优异，能够保持锐利特征，但是额外计算多。
 
 # [理论](#理论)
+
+三角网上的Laplace算子如下：
+
+$$
+\Delta(p_{i}) = \frac{1}{\sum_{p_{j}\in N(p_{i})}w_{ij}}\sum_{p_{j}\in N_{p_{i}}}w_{ij}(p_{j}-p_{i})
+$$
+
+上述为点$p_{i}$处的laplace算子，其中$N(p_{i})$表示点$p_{i}$的邻域点，通常取1环，$w_{ij}$表示边的权重。
+
+余切权重如下：
+
+$$
+w_{ij} = \frac{1}{|F_{ij}|} \sum_{f\in F_{ij}}cot(\alpha_{ij}^{f})
+$$
+
+其中$|F_{ij}|$表示共享边$(p_{i}, p_{j})$的面片数量，其中$\alpha_{ij}^{f}$表示面片$f$上边$(p_{i},p_{j})$的对角的角度。
+
+![]({{ site.baseurl }}/images/meshLaplace-001.jpg)
+
+拓扑权重如下：
+
+$$w_{ij}=1$$
 
 
 # [效果对比](#效果对比)
 
+![]({{ site.baseurl }}/images/meshLaplace-002.png)
 
 # [代码实现](#代码实现)
 
+## [拓扑权重](#拓扑权重)
 
+```cpp
+template<typename Real, typename IdxType>
+void FastMeshLaplaceSmooth(std::vector<vec3<Real>>& verts,
+                           std::vector<vec3<IdxType>>& faces,
+                            const Real step, 
+                            const int32_t numIteration, 
+                            const bool boundaryFix=true)
+{
+    if(numIteration<=0){
+        return;
+    }
 
+    const IdxType nv = verts.size();
+    const IdxType nf = faces.size();
 
+    std::vector<inlined_vector<IdxType, 8>> vertexNbrVids(nv);
+    std::vector<uint8_t> vertexFixFlag(nv, 0);
+
+    fast_unordered_map<EdgeKey<false, IdxType>, 
+        IdxType, EdgeKey<false, IdxType>, EdgeKey<false, IdxType>> edgeNbrFCount;
+    
+    for(IdxType fi=0; fi<nf; ++fi)
+    {
+        const vec3<IdxType> &f = faces[fi];
+        for(int32_t ii=0; ii<3; ++ii)
+        {
+            EdgeKey<false, IdxType> ei(f[ii], f[(ii+1)%3]);
+            auto eit = edgeNbrFCount.find(ei);
+            if(eit==edgeNbrFCount.end())
+            {
+                edgeNbrFCount.insert({ei, 1}); 
+                vertexNbrVids[ei.V[0]].push_back(ei.V[1]);
+                vertexNbrVids[ei.V[1]].push_back(ei.V[0]);
+            }
+            else
+            {
+                eit->second += 1;
+            }
+        }
+    }
+    if(boundaryFix)
+    {
+        for(const auto &eit: edgeNbrFCount)
+        {
+            if(eit.second!=2)
+            {
+                vertexFixFlag[eit.first.V[0]]=1;
+                vertexFixFlag[eit.first.V[1]]=1;
+            }
+        }
+    }
+
+    std::vector<vec3<Real>> delta(nv, vec3<Real>(Real{0}, Real{0}, Real{0}));
+    for(int32_t iter=0; iter<numIteration; ++iter)
+    {
+
+        for(IdxType iv=0; iv<nv; ++iv)
+        {
+            for(IdxType inbr: vertexNbrVids[iv])
+            {
+                delta[iv] += verts[inbr] - verts[iv]; 
+            }
+        }
+
+        for(IdxType iv=0; iv<nv; ++iv)
+        {
+            if(vertexFixFlag[iv]){continue;}
+            if(vertexNbrVids[iv].size()==0){continue;}
+            verts[iv] += delta[iv] / (Real)vertexNbrVids[iv].size() *  step;
+            delta[iv].setZero();
+        }
+    }
+}
+```
+
+## [余切权重](#余切权重)
+
+```cpp
+template<typename Real, typename IdxType>
+void FastMeshLaplaceSmoothContan(std::vector<vec3<Real>>& verts,
+                                 std::vector<vec3<IdxType>>& faces,
+                                const Real step, 
+                                const int32_t numIteration, 
+                                const bool boundaryFix=true)
+{
+    if(numIteration<=0){
+        return;
+    }
+
+    const IdxType nv = verts.size();
+    const IdxType nf = faces.size();
+
+    std::vector<uint8_t> vertexFixFlag(nv, 0);
+
+    fast_unordered_map<EdgeKey<false, IdxType>, 
+        inlined_vector<IdxType>, EdgeKey<false, IdxType>, EdgeKey<false, IdxType>> edgeNbrFids;
+    
+    for(IdxType fi=0; fi<nf; ++fi)
+    {
+        const vec3<IdxType> &f = faces[fi];
+        for(int32_t ii=0; ii<3; ++ii)
+        {
+            EdgeKey<false, IdxType> ei(f[ii], f[(ii+1)%3]);
+            auto eit = edgeNbrFids.find(ei);
+            if(eit==edgeNbrFids.end())
+            {
+                inlined_vector<IdxType> fids;
+                fids.push_back(fi);
+                edgeNbrFids.insert({ei, std::move(fids)}); 
+            }
+            else
+            {
+                eit->second.push_back(fi);
+            }
+        }
+    }
+    if(boundaryFix)
+    {
+        for(const auto &eit: edgeNbrFids)
+        {
+            if(eit.second.size()!=2)
+            {
+                vertexFixFlag[eit.first.V[0]]=1;
+                vertexFixFlag[eit.first.V[1]]=1;
+            }
+        }
+    }
+
+    const auto GetOppositeVertexOfEdgeFun = 
+    [](const vec3<IdxType> &f, IdxType u0, IdxType u1, IdxType &opposite)->bool
+    {
+        for(size_t i0=2, i1=0; i1<3; i0=i1++)
+        {
+            if((f[i0]==u0 && f[i1]==u1) || (f[i0]==u1 && f[i1]==u0))
+            {
+                opposite = f[(i1+1)%3];
+                return true;
+            }
+        }
+        return false;
+    };
+    std::vector<Real> perVertWeight(nv, Real{0.0});
+    std::vector<vec3<Real>> delta(nv, vec3<Real>(Real{0}, Real{0}, Real{0}));
+    for(int32_t iter=0; iter<numIteration; ++iter)
+    {
+        for(const auto& eit: edgeNbrFids)
+        {
+            const auto &e = eit.first;
+            const inlined_vector<IdxType> &fids = eit.second;
+            double wsum = 0.0;
+            for(IdxType fi: fids)
+            {
+                const vec3<IdxType> &f = faces[fi];
+                IdxType opposite{0};
+                if(!GetOppositeVertexOfEdgeFun(f, e.V[0], e.V[1], opposite)){
+                    LogError("failed find edge opposite vertex");
+                }
+                double c = (verts[e.V[0]] - verts[e.V[1]]).norm();
+                double a0 = (verts[e.V[0]] - verts[opposite]).norm();
+                double b0 = (verts[e.V[1]] - verts[opposite]).norm();
+                double cos_u = (b0*b0 + a0*a0 - c*c) / (2.0 * b0 * a0);
+                double sin_u = std::sqrt(1.0 - cos_u * cos_u);
+                double weight = cos_u / sin_u;
+                wsum += weight;
+            }
+            wsum /= (double) fids.size();
+
+            perVertWeight[e.V[0]] += wsum;
+            perVertWeight[e.V[1]] += wsum;
+            delta[e.V[0]] += wsum * (verts[e.V[1]] - verts[e.V[0]]);
+            delta[e.V[1]] += wsum * (verts[e.V[0]] - verts[e.V[1]]);
+        }
+
+        const Real eps = Real{1e-8};
+        for(IdxType iv=0; iv<nv; ++iv)
+        {
+            if(vertexFixFlag[iv]){continue;}
+            if(std::abs(perVertWeight[iv]) < eps){
+                continue;
+            }
+            verts[iv] += delta[iv] / perVertWeight[iv] *  step;
+            delta[iv].setZero();
+            perVertWeight[iv] = Real{0.0};
+        }
+    }
+}
+```
 
 
