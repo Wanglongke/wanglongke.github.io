@@ -1,0 +1,294 @@
+---
+layout: post
+title:  三角网Laplace变形
+date:   2026-02-23 15:30:00 +0300
+tags:   ComputerGraphics
+description:  Laplace
+---
+
+# [简介](#简介)
+
+三角网的Laplace变形，可以描述为带边界条件的Poisson方程求解。实现整体变形，局部保持细节。与Poisson图像编辑非常相似，只不过是在三角网上而已，需要满足三角网上laplace算子的形式。
+
+# [理论](#理论)
+
+三角网上的Laplace算子如下：
+
+$$
+\Delta(p_{i}) = \frac{1}{\sum_{p_{j}\in N(p_{i})}w_{ij}}\sum_{p_{j}\in N_{p_{i}}}w_{ij}(p_{j}-p_{i})
+$$
+
+上述为点$p_{i}$处的laplace算子，其中$N(p_{i})$表示点$p_{i}$的邻域点，通常取1环，$w_{ij}$表示边的权重。
+
+余切权重如下：
+
+$$
+w_{ij} = \frac{1}{|F_{ij}|} \sum_{f\in F_{ij}}cot(\alpha_{ij}^{f})
+$$
+
+其中$\alpha_{ij}^{f}$表示面片$f$上边$(p_{i},p_{j})$的对角的角度。     
+其中$|F_{ij}|$表示共享边$(p_{i}, p_{j})$的面片数量。     
+
+![]({{ site.baseurl }}/images/meshLaplace-001.jpg)
+
+可以构造方程如下：
+$$
+\left(
+\begin{array}{}
+\Delta  \\
+\hline
+0 \quad | \quad I_{F}  \\
+\hline
+W_{E}
+\end{array}
+\right)
+\left(
+\begin{array}{}
+P_{A}^{*} \\
+P_{F}^{*}
+\end{array}
+\right)
+=
+\left(
+\begin{array}{}
+\Delta(P_{A}) \\
+P_{F} \\
+W_{E}*P_{T}
+\end{array}
+\right)
+$$
+
+这个方程可以拆解为三部分：    
+1. 随动点$P_{A}$在变形过程中保持其laplace属性，即原顶点$p_{j}$与变形后的点$p_{j}^{*}$满足：   
+
+$$
+\Delta(p_{j}) = \Delta(p_{j}^{*})
+$$
+
+2. 固定点满足变形后保持不动：    
+
+$$
+P_{F} = P_{F}^{*}
+$$
+
+3. 变形引导的编辑(Edit)点满足变形后到达目标(Target)位置：    
+   
+$$
+W_{E}=
+\left(
+\begin{array}{}
+0 & ...& 0 & w_{i} &  0 & ... & 0 \\
+0 & ...& 0 & w_{j} &  0 & ... & 0 \\
+& & & ......\\
+0 & ...& 0 & w_{k} &  0 & ... & 0
+\end{array}
+\right)_{m \times n}
+$$
+
+权重$w_{i}$ 位于第$i$列，表示第$i$个点被编辑时的权重。   
+权重矩阵大小为$m\times n$.    
+其中$m$表示编辑点的数量，其中$n$表示总点数，即被求解点的数量。     
+其中$P_{T}$表示被编辑点的变形目标位置。    
+
+令
+
+$$
+L = 
+\left(
+\begin{array}{}
+\Delta  \\
+\hline
+0 \quad | \quad I_{F}  \\
+\hline
+W_{E}
+\end{array}
+\right)_{(n+m)\times n}
+$$
+
+$$
+P = 
+\left(
+\begin{array}{}
+\Delta(P_{A}) \\
+P_{F} \\
+W_{E}*P_{T}
+\end{array}
+\right)_{(n+m)\times n}
+$$
+
+构造最小二乘方程，分别求解三个坐标：
+
+$$
+L^{T}L P_{x}^{*} = P_{x}
+$$
+
+$$
+L^{T}L P_{y}^{*} = P_{y}
+$$
+
+$$
+L^{T}L P_{z}^{*} = P_{z}
+$$
+
+
+# [效果](#效果)
+
+![]({{ site.baseurl }}/images/meshLaplace-003.png)
+
+左图兔子耳朵上绿色为固定的边界，红色为编辑的点，编辑点的权重均为10.0. 靠近耳朵尖的顶点编辑后目标顶点位置为原顶点平移(0.35, 0.0, 0.35)后的位置，另一个编辑点编辑后的位置与原位置一致。       
+
+# [代码实现](#代码实现)
+
+```cpp
+template<typename IdxType>
+bool GetOppositeVertexOfEdge(const vec3<IdxType> &f, IdxType u0, IdxType u1,    IdxType &opposite)
+{
+    for(size_t i0=2, i1=0; i1<3; i0=i1++)
+    {
+        if((f[i0]==u0 && f[i1]==u1) || (f[i0]==u1 && f[i1]==u0))
+        {
+            opposite = f[(i1+1)%3];
+            return true;
+        }
+    }
+    return false;
+}
+
+template<typename Real, typename IdxType>
+double HarmonicWieht(const std::vector<vec3<Real>> &verts,
+                     const std::vector<vec3<IdxType>> &faces,
+                     const fast_unordered_map<EdgeKey<false, IdxType>, 
+                        inlined_vector<IdxType>, EdgeKey<false, IdxType>, EdgeKey<false, IdxType>>& edgeNbrFids,
+                     const EdgeKey<false, IdxType> &e)
+{
+    const auto &eit = mEdgeNbrFids.find(e);
+    LogAssert(eit!=mEdgeNbrFids.end(), "failed find edge");
+    const inlined_vector<IdxType> &fids = eit->second;
+    double wsum = 0.0;
+    for(IdxType fi: fids)
+    {
+        const vec3<IdxType> &f = faces[fi];
+        IdxType opposite{0};
+        if(!GetOppositeVertexOfEdge(f, e.V[0], e.V[1], opposite)){
+            LogError("failed find edge opposite vertex");
+        }
+        double c = (verts[e.V[0]] - verts[e.V[1]]).norm();
+        double a0 = (verts[e.V[0]] - verts[opposite]).norm();
+        double b0 = (verts[e.V[1]] - verts[opposite]).norm();
+        double cos_u = (b0*b0 + a0*a0 - c*c) / (2.0 * b0 * a0);
+        double sin_u = std::sqrt(1.0 - cos_u * cos_u);
+        double weight = cos_u / sin_u;
+        wsum += weight;
+    }
+    wsum /= (double) fids.size();
+    return wsum;
+}
+
+template<typename Real, typename IdxType>
+void LaplaceDeform(std::vector<vec3<Real>> &verts,
+                    const std::vector<vec3<IdxType>> &faces,
+                    const fast_unordered_map<EdgeKey<false, IdxType>, 
+                        inlined_vector<IdxType>, EdgeKey<false, IdxType>, EdgeKey<false, IdxType>>& edgeNbrFids,
+                    const std::vector<inlined_vector<IdxType, 8>>& vertexNbrVids,
+                    const std::vector<uint8_t>& vertexFixFlag,
+                    const std::vector<IdxType>& editVertIds,
+                    const std::vector<vec3<Real>>& targetPositions,
+                    const std::vector<Real> &perEditVertWeights)
+{
+    using SparseMatrix = Eigen::SparseMatrix<double>;
+    using Triplet = Eigen::Triplet<double>;
+    
+    LogAssert(editVertIds.size()==targetPositions.size(), "size not equal");
+    LogAssert(editVertIds.size()==perEditVertWeights.size(), "size not equal");
+
+    std::vector<Triplet> L_coefficients;
+    const IdxType nv = verts.size();
+    for(IdxType iv=0; iv<nv; ++iv)
+    {
+        if(vertexFixFlag[iv]){
+            continue;
+        }
+        const inlined_vector<IdxType, 8> &nbrVids = vertexNbrVids[iv];
+
+        double sw = 0.0;
+        for(IdxType iw: nbrVids)
+        {
+            EdgeKey<false, IdxType> e(iv, iw);
+            double w = HarmonicWieht(verts, faces, edgeNbrFids, e);
+            L_coefficients.push_back(Triplet(iv, iw, -w));
+            sw += w;
+        }
+
+        L_coefficients.push_back(Triplet(iv, iv, sw));
+    }
+    for(IdxType iv=0; iv<nv; ++iv)
+    {
+        if(vertexFixFlag[iv]){
+            L_coefficients.push_back(Triplet(iv, iv, 1.0));
+        }
+    }
+    const IdxType numEditVert = editVertIds.size();
+    for(IdxType ik=0; ik<numEditVert; ++ik)
+    {
+        L_coefficients.push_back(Triplet(nv+ik, editVertIds[ik], perEditVertWeights[ik]));
+    }
+
+    SparseMatrix lMat(nv+numEditVert, nv);
+    lMat.setZero();
+    lMat.setFromTriplets(L_coefficients.begin(), L_coefficients.end());
+
+    Eigen::VectorXd pos_x(nv);
+    Eigen::VectorXd pos_y(nv);
+    Eigen::VectorXd pos_z(nv);
+    for(IdxType iv=0; iv<nv; ++iv)
+    {
+        const vec3<Real> &pos = verts[iv];
+        pos_x[iv] = pos[0];
+        pos_y[iv] = pos[1];
+        pos_z[iv] = pos[2];
+    }
+
+    Eigen::VectorXd delta_x = lMat * pos_x;
+    Eigen::VectorXd delta_y = lMat * pos_y;
+    Eigen::VectorXd delta_z = lMat * pos_z;
+
+    for(IdxType ik=0; ik<numEditVert; ++ik)
+    {
+        delta_x[nv+ik] = perEditVertWeights[ik] * targetPositions[ik][0];
+        delta_y[nv+ik] = perEditVertWeights[ik] * targetPositions[ik][1];
+        delta_z[nv+ik] = perEditVertWeights[ik] * targetPositions[ik][2];
+    }
+    
+    SparseMatrix lTMat = lMat.transpose();
+
+    SparseMatrix lTlMat = lTMat * lMat;
+    Eigen::BiCGSTAB<SparseMatrix> solver;
+    // Eigen::ConjugateGradient<SparseMatrix> solver;
+    solver.compute(lTlMat);
+    solver.setTolerance(double{1e-5});
+    if(solver.info()!=Eigen::Success)
+    {
+        LogError("failed solve sparse matrix");
+    }
+    Eigen::VectorXd x(nv);
+    Eigen::VectorXd y(nv);
+    Eigen::VectorXd z(nv);
+
+    x = solver.solve(lTMat * delta_x);
+    y = solver.solve(lTMat * delta_y);
+    z = solver.solve(lTMat * delta_z);
+
+    for(IdxType iv=0; iv<nv; ++iv)
+    {
+        if(vertexFixFlag[iv]){continue;}
+        verts[iv][0] = x[iv];
+        verts[iv][1] = y[iv];
+        verts[iv][2] = z[iv];
+    }
+}
+
+```
+
+
+
+
