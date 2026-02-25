@@ -26,7 +26,9 @@ $$
 w_{ij} = \frac{1}{|F_{ij}|} \sum_{f\in F_{ij}}cot(\alpha_{ij}^{f})
 $$
 
-其中$|F_{ij}|$表示共享边$(p_{i}, p_{j})$的面片数量，其中$\alpha_{ij}^{f}$表示面片$f$上边$(p_{i},p_{j})$的对角的角度。
+其中$|F_{ij}|$表示共享边$(p_{i}, p_{j})$的面片数量。    
+
+其中$\alpha_{ij}^{f}$表示面片$f$上边$(p_{i},p_{j})$的对角的角度。
 
 ![]({{ site.baseurl }}/images/meshLaplace-001.jpg)
 
