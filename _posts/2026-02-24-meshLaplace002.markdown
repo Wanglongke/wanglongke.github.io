@@ -31,7 +31,8 @@ $$
 
 ![]({{ site.baseurl }}/images/meshLaplace-001.jpg)
 
-可以构造方程如下：
+可以构造方程如下：  
+
 $$
 \left(
 \begin{array}{}
@@ -197,7 +198,7 @@ void LaplaceDeform(std::vector<vec3<Real>> &verts,
 {
     using SparseMatrix = Eigen::SparseMatrix<double>;
     using Triplet = Eigen::Triplet<double>;
-    
+
     LogAssert(editVertIds.size()==targetPositions.size(), "size not equal");
     LogAssert(editVertIds.size()==perEditVertWeights.size(), "size not equal");
 
