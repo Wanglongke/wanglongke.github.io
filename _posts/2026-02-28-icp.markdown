@@ -1,0 +1,526 @@
+---
+layout: post
+title:  ICP点云配准
+date:   2026-02-23 15:30:00 +0300
+tags:   DigitalGeometry
+description:  ICP
+---
+
+# [简介](#简介)
+
+ICP点云配准算法是刚性配准算法，用来求解原始点云到目标点云之间的相对位姿（旋转与平移），使得原始点云能够和目标点云融合在一起。这里会介绍Point-to-Point和Point-to-Plane这两个能量项最小化的求解。
+
+
+# [预备知识](#预备知识)
+
+## [旋转](#旋转)
+
+对于$\mathbf{X}\mathbf{O}\mathbf{Y}$平面上的向量$(x,y)$绕$\mathbf{Z}$轴旋转一定的角度$\theta$后得到新的向量$(x^{*},y^{*})$其过程如下：     
+
+![]({{ site.baseurl }}/images/icp-001.png)
+
+设$l$为向量长度，则向量$(x,y)$满足：    
+
+$$
+x = l * \cos(\varphi)
+$$
+
+$$
+y = l * \sin(\varphi)
+$$
+
+旋转后坐标如下：     
+
+$$
+x^{*} = l * \cos(\varphi + \theta) = l * (\cos(\theta)\cos(\varphi) - \sin(\theta)\sin(\varphi)) = x * \cos(\theta) - y * \sin(\theta)
+$$
+
+$$
+y^{*} = l * \sin(\varphi + \theta) = l * (\sin(\theta)\cos(\varphi)+\cos(\theta)\sin(\varphi)) = x * \sin(\theta) + y * \cos(\theta)
+$$
+
+整理为矩阵乘向量：     
+
+$$
+\left( \begin{array}{}
+x^{*} \\
+y^{*}
+\end{array}{} \right)
+=
+\left( \begin{array}{}
+\cos(\theta) & -\sin(\theta) \\
+\sin(\theta) & \cos(\theta)
+\end{array}{} \right)
+\left( \begin{array}{}
+x \\
+y
+\end{array}{} \right)
+$$
+
+
+同理三维空间中绕$\mathbf{X}\mathbf{Y}\mathbf{Z}$各轴旋转的旋转矩阵如下：      
+绕$\mathbf{X}$轴旋转：     
+
+$$
+\left( \begin{array}{}
+1 & 0 & 0 & 0 \\
+0 & \cos(\theta) & -\sin(\theta) & 0 \\
+0 & \sin(\theta) & \cos(\theta) & 0 \\
+0 & 0 & 0 & 1 
+\end{array}{} \right)
+\left( \begin{array}{}
+x \\
+y \\
+z \\
+1
+\end{array}{} \right)
+=
+\left( \begin{array}{}
+x \\
+\cos(\theta) \cdot y - \sin(\theta) \cdot z \\
+\sin(\theta) \cdot y + \cos(\theta) \cdot z \\
+1
+\end{array}{} \right)
+$$
+
+绕$\mathbf{Y}$轴旋转：     
+
+$$
+\left( \begin{array}{}
+\cos(\theta) & 0 & \sin(\theta) & 0 \\
+0 & 1 & 0 & 0 \\
+-\sin(\theta) & 0 & \cos(\theta) & 0 \\
+0 & 0 & 0 & 1 
+\end{array}{} \right)
+\left( \begin{array}{}
+x \\
+y \\
+z \\
+1
+\end{array}{} \right)
+=
+\left( \begin{array}{}
+\cos(\theta) \cdot x + \sin(\theta) \cdot z\\
+y \\
+-\sin(\theta) \cdot x + \cos(\theta) \cdot z \\
+1
+\end{array}{} \right)
+$$
+
+绕$\mathbf{Z}$轴旋转：     
+
+$$
+\left( \begin{array}{}
+\cos(\theta) & -\sin(\theta) & 0 & 0\\
+\sin(\theta) & \cos(\theta) & 0 & 0\\
+0 & 0 & 1 & 0 \\
+0 & 0 & 0 & 1 
+\end{array}{} \right)
+\left( \begin{array}{}
+x \\
+y \\
+z \\
+1
+\end{array}{} \right)
+=
+\left( \begin{array}{}
+\cos(\theta) \cdot x - \sin(\theta) \cdot y \\
+\sin(\theta) \cdot x + \cos(\theta) \cdot y \\
+z \\
+1
+\end{array}{} \right)
+$$
+
+连续绕三个轴旋转会遇到万向节死锁问题，旋转过程中有可能导致一个轴与另一个轴重合，自由度消失。      
+比如按$\mathbf{Z}\mathbf{Y}\mathbf{X}$的顺序旋转角度$(\theta_{z}, \theta_{y},\theta_{x})$得到旋转矩阵表示如下：      
+
+$$
+\begin{align*}
+&\left( \begin{array}{}
+1 & 0 & 0 & 0 \\
+0 & \cos(\theta_{x}) & -\sin(\theta_{x}) & 0 \\
+0 & \sin(\theta_{x}) & \cos(\theta_{x}) & 0 \\
+0 & 0 & 0 & 1 
+\end{array}{} \right)
+\left( \begin{array}{}
+\cos(\theta_{y}) & 0 & \sin(\theta_{y}) & 0 \\
+0 & 1 & 0 & 0 \\
+-\sin(\theta_{y}) & 0 & \cos(\theta_{y}) & 0 \\
+0 & 0 & 0 & 1 
+\end{array}{} \right)
+\left( \begin{array}{}
+\cos(\theta_{z}) & -\sin(\theta_{z}) & 0 & 0\\
+\sin(\theta_{z}) & \cos(\theta_{z}) & 0 & 0\\
+0 & 0 & 1 & 0 \\
+0 & 0 & 0 & 1 
+\end{array}{} \right) \\
+&= 
+\left( \begin{array}{}
+\cos(\theta_{y}) & 0 & \sin(\theta_{y}) & 0 \\
+\sin(\theta_{x}) \sin(\theta_{y}) & \cos(\theta_{x}) & -\sin(\theta_{x})\cos(\theta_{y}) & 0\\
+-\cos(\theta_{x})\sin(\theta_{y}) & \sin(\theta_{x}) & \cos(\theta_{x})\cos(\theta_{y}) & 0 \\
+0 & 0 & 0 & 1 
+\end{array}{} \right)
+\left( \begin{array}{}
+\cos(\theta_{z}) & -\sin(\theta_{z}) & 0 & 0\\
+\sin(\theta_{z}) & \cos(\theta_{z}) & 0 & 0\\
+0 & 0 & 1 & 0 \\
+0 & 0 & 0 & 1 
+\end{array}{} \right)
+\\ 
+&=
+\left( \begin{array}{}
+\cos(\theta_{y})\cos(\theta_{z}) & -\cos(\theta_{y})\sin(\theta_{z}) & \sin(\theta_{y}) & 0 \\
+\sin(\theta_{x}) \sin(\theta_{y}) \cos(\theta_{z}) + \cos(\theta_{x}) \sin(\theta_{z}) & -\sin(\theta_{x})\sin(\theta_{y})\sin(\theta_{z}) + \cos(\theta_{x})\cos(\theta_{z}) & -\sin(\theta_{x})\cos(\theta_{y}) & 0\\
+-\cos(\theta_{x})\sin(\theta_{y})\cos(\theta_{z}) + \sin(\theta_{x})\sin(\theta_{z}) & \cos(\theta_{x})\sin(\theta_{y})\sin(\theta_{z}) + \sin(\theta_{x}) \cos(\theta_{z}) & \cos(\theta_{x})\cos(\theta_{y}) & 0 \\
+0 & 0 & 0 & 1 
+\end{array}{} \right)
+\end{align*}
+$$
+
+假设$\theta_{y}=\frac{\pi}{2}$则变换矩阵为：     
+
+$$
+\begin{align*}
+&\left( \begin{array}{}
+0 & 0 & 1 & 0 \\
+\sin(\theta_{x}) \cos(\theta_{z}) + \cos(\theta_{x}) \sin(\theta_{z}) & -\sin(\theta_{x})\sin(\theta_{z}) + \cos(\theta_{x})\cos(\theta_{z}) & 0 & 0\\
+-\cos(\theta_{x})\cos(\theta_{z}) + \sin(\theta_{x})\sin(\theta_{z}) & \cos(\theta_{x})\sin(\theta_{z}) + \sin(\theta_{x}) \cos(\theta_{z}) & 0 & 0 \\
+0 & 0 & 0 & 1 
+\end{array}{} \right)
+\\ 
+&=
+\left( \begin{array}{}
+0 & 0 & 1 & 0 \\
+\sin(\theta_{x} + \theta_{z}) & \cos(\theta_{x} + \theta_{z}) & 0 & 0\\
+-\cos(\theta_{x} + \theta_{z}) &\sin(\theta_{x} + \theta_{z}) & 0 & 0 \\
+0 & 0 & 0 & 1 
+\end{array}{} \right)
+\end{align*}
+$$
+
+此时$\mathbf{X}\mathbf{Z}$轴重和，这两个轴的旋转不再独立，而是合成了一个新角度$(\theta_{x}+\theta_{z})$从而出发万向节死锁。     
+
+## [旋转近似](#旋转近似)
+
+当$\theta$是小角度是可做以下近似：    
+
+$$\cos(\theta)=1$$
+$$\sin(\theta)=\theta$$
+
+则绕三轴的旋转矩阵近似为：      
+
+$$
+\left( \begin{array}{}
+1 & -\theta_{z} & \theta_{y} & 0 \\
+\sin(\theta_{x}) \sin(\theta_{y}) + \theta_{z} & -\sin(\theta_{x})\sin(\theta_{y})\sin(\theta_{z}) + 1 & -\theta_{x} & 0\\
+-\theta_{y} + \sin(\theta_{x})\sin(\theta_{z}) & \sin(\theta_{y})\sin(\theta_{z}) + \theta_{x} & 1 & 0 \\
+0 & 0 & 0 & 1 
+\end{array}{} \right)
+$$
+
+再进行以下消除：      
+
+$$
+\begin{align*}
+&\qquad \sin(\theta_{x})\sin(\theta_{y}) \\
+&=
+\sin(\theta_{x})\sin(\theta_{y}) - \cos(\theta_{x})\cos(\theta_{y}) + \cos(\theta_{x})\cos(\theta_{y}) \\
+&= -\cos(\theta_{x}+\theta_{y}) + \cos(\theta_{x})\cos(\theta_{y}) \\ 
+&= 0
+\end{align*}
+$$
+
+可得：      
+
+$$
+\left( \begin{array}{}
+1 & -\theta_{z} & \theta_{y} & 0 \\
+\theta_{z} & 1 & -\theta_{x} & 0\\
+-\theta_{y} & \theta_{x} & 1 & 0 \\
+0 & 0 & 0 & 1 
+\end{array}{} \right)
+=
+\left( \begin{array}{}
+1 & 0 & 0 & 0 \\
+0 & 1 & 0 & 0\\
+0 & 0 & 1 & 0 \\
+0 & 0 & 0 & 1 
+\end{array}{} \right)
++
+\left( \begin{array}{}
+0 & -\theta_{z} & \theta_{y} & 0 \\
+\theta_{z} & 0 & -\theta_{x} & 0\\
+-\theta_{y} & \theta_{x} & 0 & 0 \\
+0 & 0 & 0 & 0 
+\end{array}{} \right) = I + \Theta
+$$
+
+一般写成3乘3的旋转阵：    
+$$
+R = 
+\left( \begin{array}{}
+1 & -\theta_{z} & \theta_{y} \\
+\theta_{z} & 1 & -\theta_{x} \\
+-\theta_{y} & \theta_{x} & 1 
+\end{array}{} \right)
+$$
+
+
+## [平移](#平移)
+
+平移用$T$表示：    
+$$
+T = 
+\left (
+\begin{array}{}
+t_{x} \\
+t_{y} \\
+t_{z}
+\end{array}{}
+\right )
+$$
+
+# [Point-to-Point](Point_to_Point)
+
+点到点的能量项为：     
+
+$$E = \sum_{i}(Rp_{i}+T-q_{i})^{2}$$
+
+其中$p_{i}$为原始点，其中$q_{i}$为目标点。     
+对于任一点$p_{i}$可进行下面推到，最终得到线性方程组：   
+
+$$
+E_{i} = \| R
+\left(\begin{array}{}
+x_{i} \\
+y_{i} \\
+z_{i}
+\end{array}{} \right)
++ T - 
+\left(\begin{array}{}
+x_{i}^{*} \\
+y_{i}^{*} \\
+z_{i}^{*}
+\end{array}{} \right)
+\|_{2}
+$$
+
+能量$E_{i}$最小为0，即：     
+
+$$
+E_{i}=
+\|
+\left(
+\begin{array}{}
+\theta_{y}z_{i}-\theta_{z}y_{i} \\
+\theta_{z}x_{i}-\theta_{x}z_{i} \\
+\theta_{x}y_{i}-\theta_{y}x_{i}
+\end{array}{}
+\right)
++
+\left (
+\begin{array}{}
+t_{x} \\
+t_{y} \\
+t_{z}
+\end{array}{}
+\right )
++
+\left (
+\begin{array}{}
+x_{i} - x_{i}^{*} \\
+y_{i} - y_{i}^{*} \\
+z_{i} - z_{i}^{*}
+\end{array}{}
+\right )
+\|_{2}
+=0
+$$
+
+即：     
+
+$$
+\left( \begin{array}{}
+0     & z_{i}  & -y_{i} & 1 & 0 & 0 \\
+z_{i} & 0      & x_{i}  & 0 & 1 & 0 \\
+y_{i} & -x_{i} & 0      & 0 & 0 & 1 
+\end{array}{} \right)
+
+\left( \begin{array}{}
+\theta_{x} \\
+\theta_{y} \\
+\theta_{z} \\
+t_{x} \\
+t_{y} \\
+t_{z}
+\end{array}{} \right)
+=
+\left( \begin{array}{}
+x_{i}^{*} - x_{i}\\
+y_{i}^{*} - y_{i}\\
+z_{i}^{*} - z_{i}
+\end{array}{} \right)
+$$
+
+从而得到线性方程组：     
+
+$$
+A_{i} = 
+\left( \begin{array}{}
+0     & z_{i}  & -y_{i} & 1 & 0 & 0 \\
+z_{i} & 0      & x_{i}  & 0 & 1 & 0 \\
+y_{i} & -x_{i} & 0      & 0 & 0 & 1 
+\end{array}{} \right)
+$$
+
+$$
+x = 
+\left( \begin{array}{}
+\theta_{x} \\
+\theta_{y} \\
+\theta_{z} \\
+t_{x} \\
+t_{y} \\
+t_{z}
+\end{array}{} \right)
+$$
+
+$$
+b_{i} = 
+\left( \begin{array}{}
+x_{i}^{*} - x_{i}\\
+y_{i}^{*} - y_{i}\\
+z_{i}^{*} - z_{i}
+\end{array}{} \right)
+$$
+
+将每个点上的小方程组写到一起，并给每点一个权重：      
+
+$$
+A = 
+\left( \begin{array}{}
+A_{1}   \\
+A_{2}   \\
+...     \\
+A_{n}
+\end{array}{} \right), \quad
+
+A_{w} = 
+\left( \begin{array}{}
+w_{1}A_{1}   \\
+w_{2}A_{2}   \\
+...     \\
+w_{n}A_{n}
+\end{array}{} \right)
+$$
+
+$$
+b = 
+\left( \begin{array}{}
+b_{1} \\
+b_{2} \\
+...   \\
+b_{n}
+\end{array}{} \right)
+$$
+
+显然此方程为超定方程（可能也不显然，需要看$A$的秩，但大概率是），可写为下面形式：       
+
+$$
+A_{w}^{T}Ax=A_{w}^{T}b
+$$
+
+# [Point-to-Plane](Point_to_Plane)
+
+点到面的能量构造如下：    
+
+$$
+E = \sum_{i}(n_{i}^{T}(Rp_{i}+T-q_{i}))^{2}
+$$
+
+其中$n_{i}$为点$q_{i}$的法向量。        
+从任一点做分析如下：      
+
+$$
+\begin{align*}
+& E_{i} = n_{i}^{T}(I+\Theta)p_{i} + n^{T}_{i}T - n_{i}^{T}q_{i} \\
+& \quad \, = n_{i}^{T}p_{i} + n_{i}^{T}(\Theta p_{i}) +  n^{T}_{i}T - n_{i}^{T}q_{i} \\
+& \quad \, =  n_{i}^{T}p_{i} + n_{i}^{T}(-p_{i}\times \mathbf{\theta}) +  n^{T}_{i}T - n_{i}^{T}q_{i} \\
+& \quad \, = (p_{i}\times n_{i}^{T}) \mathbf{\theta} + n_{i}^{T}T - n_{i}^{T}(q_{i}-p_{i})
+\end{align*} 
+$$
+
+其中有两个关键的转换：     
+
+$$
+\Theta p_{i} = 
+\left( \begin{array}{}
+0 & -\theta_{z} & \theta_{y}\\
+\theta_{z} & 0 & -\theta_{x}\\
+-\theta_{y} & \theta_{x} & 0\\
+\end{array}{} \right)
+\left( \begin{array}{}
+x_{i} \\
+y_{i} \\
+z_{i}
+\end{array}{} \right)
+= -
+\left( \begin{array}{}
+x_{i} \\
+y_{i} \\
+z_{i}
+\end{array}{} \right)
+\times 
+\left( \begin{array}{}
+\theta_{x} \\
+\theta_{y} \\
+\theta_{z}
+\end{array}{} \right)
+$$
+
+$$
+n_{i}^{T}(-p_{i}\times \mathbf{\theta}) = 
+(p_{i}\times n_{i})^{T} \mathbf{\theta}
+$$
+
+整理成线性方程组的形式：     
+
+$$
+A = 
+\left( \begin{array}{}
+(p_{1}\times n_{1})^{T}  & n_{1}^{T} \\
+(p_{2}\times n_{2})^{T}  & n_{2}^{T} \\
+... \\
+(p_{n}\times n_{n})^{T}  & n_{n}^{T}
+\end{array}{} \right)
+$$
+
+$$
+x = 
+\left( \begin{array}{}
+\theta_{x} \\
+\theta_{y} \\
+\theta_{z} \\
+t_{x} \\
+t_{y} \\
+t_{z}
+\end{array}{} \right)
+$$
+
+$$
+b = 
+\left( \begin{array}{}
+-(p_{1}-q_{1})^{T}n_{1}  \\
+-(p_{2}-q_{2})^{T}n_{2}  \\
+... \\
+-(p_{n}-q_{n})^{T}n_{n}
+\end{array}{} \right)
+$$
+
+同样可以构造加权最小二乘方程：  
+
+$$
+A_{w}^{T}Ax=A_{w}^{T}b
+$$
+
