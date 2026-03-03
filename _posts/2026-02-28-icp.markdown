@@ -524,3 +524,186 @@ $$
 A_{w}^{T}Ax=A_{w}^{T}b
 $$
 
+
+# [代码实现](代码实现)
+
+这里给出Point-to-Plane的代码实现：    
+
+```cpp
+template<typename Real, typename PointType>
+void ICP(mat4<Real>& finalPose, const std::string &srcPcloudFile, const std::string &trgPcloudFile, const mat4<Real>& initPose, const int32_t maxICPIters=10, const Real distThre=Real{0.1})
+{
+    PointCloudReaderPLY<PointType> srcReader(srcPcloudFile);
+    PointCloudReaderPLY<PointType> trgReader(trgPcloudFile);
+    PointReadState pstate;
+
+    PointCloud<PointType>::Ptr trgPcloudPtr = 
+        PointCloud<PointType>{}.makeShared();
+    trgReader.ReadPoints(*trgPcloudPtr, pstate);
+    spdlog::info("PLY Reader: count={}, xyz={}, normal={}, rgb={}, ", 
+            trgPcloudPtr->size(),
+            pstate.mEnableXYZ, 
+            pstate.mEnableNormal, 
+            pstate.mEnableRGB);
+
+    PointCloud<PointType>::Ptr srcPcloudPtr = 
+        PointCloud<PointType>{}.makeShared();
+    srcReader.ReadPoints(*srcPcloudPtr, pstate);
+    spdlog::info("PLY Reader: count={}, xyz={}, normal={}, rgb={}, ", 
+            srcPcloudPtr->size(),
+            pstate.mEnableXYZ, 
+            pstate.mEnableNormal, 
+            pstate.mEnableRGB);
+    
+    KdTree<PointType, size_t> trgKdtree;
+    trgKdtree.setInputCloud(trgPcloudPtr, 4);
+
+    mat4<Real> initTransMat = initPose;
+
+    Real distThre2 = distThre * distThre;
+    for(int32_t iter=0; iter<maxICPIters; ++iter)
+    {
+        std::vector<std::pair<vec3<Real>, size_t>> matchers;
+        {
+            mat<Real, 3, 3> rot = initTransMat.topLeftCorner(3, 3);
+            mat<Real, 3, 1> trans = initTransMat.topRightCorner(3, 1);
+            const size_t npt = srcPcloudPtr->size();
+            const size_t knn = 1;
+#ifdef _OPENMP 
+            const int32_t nthread = omp_get_max_threads();
+#else
+            const int32_t nthread = 1;
+#endif
+            std::vector<std::vector<std::pair<vec3<Real>, size_t>>> threadMatchers(nthread);
+            std::vector<std::vector<size_t>> threadKIndices(nthread);
+            std::vector<std::vector<Real>> threadKSqrDists(nthread);
+
+#ifdef _OPENMP
+            #pragma omp parallel for
+#endif
+            for(size_t ipt=0; ipt<npt; ++ipt)
+            {
+
+#ifdef _OPENMP
+                const int32_t ithread = omp_get_thread_num();
+#else
+                const int32_t ithread = 0;
+#endif
+                PointType pt = srcPcloudPtr->points[ipt];
+                vec<3, Real> pos(pt.x, pt.y, pt.z);
+                pos = rot * pos + trans;
+                vec<3, Real> nor(pt.normal_x, pt.normal_y, pt.normal_z);
+                nor = rot * nor;
+                pt.x = pos[0]; pt.y = pos[1]; pt.z = pos[2];
+                pt.normal_x = nor[0]; pt.normal_y = nor[1]; pt.normal_z = nor[2];
+                std::vector<size_t> &k_indices = threadKIndices[ithread];
+                std::vector<Real> &k_sqr_dists = threadKSqrDists[ithread];
+
+                size_t k = trgKdtree.nearestKSearch(pt, knn, k_indices, k_sqr_dists);
+                if(k!=knn){
+                    continue;
+                }
+                if(k_sqr_dists.front() > distThre2){
+                    continue;
+                }
+
+                threadMatchers[ithread].emplace_back(vec3<Real>(pt.x, pt.y, pt.z), k_indices.front());
+            }
+
+            for(int32_t ithread=0; ithread<nthread; ++ithread)
+            {
+                matchers.insert(matchers.end(), threadMatchers[ithread].begin(), threadMatchers[ithread].end());
+            }
+        }
+
+        const size_t nmatcher = matchers.size();
+        
+        if(nmatcher<10){
+            break;
+        }
+
+        Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic> srcPositions;
+        Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic> trgPositions;
+        Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic> trgNormals;
+        srcPositions.resize(nmatcher, 3);
+        trgPositions.resize(nmatcher, 3);
+        trgNormals.resize(nmatcher, 3);
+
+        Real maxError = Real{0.0};
+        Real avgError = Real{0.0};
+#ifdef _OPENMP
+        #pragma omp parallel for
+#endif
+        for(size_t imch=0; imch<nmatcher; ++imch)
+        {
+            srcPositions(imch, 0) = matchers[imch].first[0];
+            srcPositions(imch, 1) = matchers[imch].first[1];
+            srcPositions(imch, 2) = matchers[imch].first[2];
+            const PointType &pt = trgPcloudPtr->points[matchers[imch].second];
+            trgPositions(imch, 0) = pt.x;
+            trgPositions(imch, 1) = pt.y;
+            trgPositions(imch, 2) = pt.z;
+            trgNormals(imch, 0) = pt.normal_x;
+            trgNormals(imch, 1) = pt.normal_y;
+            trgNormals(imch, 2) = pt.normal_z;
+            Real error = std::abs((matchers[imch].first - vec3<Real>(pt.x, pt.y, pt.z)).dot(vec3<Real>(pt.normal_x, pt.normal_y, pt.normal_z)));
+#ifdef _OPENMP
+            #pragma omp critical
+#endif
+            {
+                maxError = std::max(maxError, error);
+                avgError += error;
+            }
+        }
+        avgError /= nmatcher;
+
+        spdlog::info("numMatcher:{}, maxError:{}, avgError:{}", nmatcher, maxError, avgError);
+        distThre = avgError * Real{1.5};
+        distThre2 = distThre * distThre;
+
+        Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic> cross;
+        cross.resize(nmatcher, 3);
+        cross.col(0) = srcPositions.col(1).array() * trgNormals.col(2).array() - srcPositions.col(2).array() * trgNormals.col(1).array();
+        cross.col(1) = srcPositions.col(2).array() * trgNormals.col(0).array() - srcPositions.col(0).array() * trgNormals.col(2).array();
+        cross.col(2) = srcPositions.col(0).array() * trgNormals.col(1).array() - srcPositions.col(1).array() * trgNormals.col(0).array();
+        
+        Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic> wF;
+        wF.resize(nmatcher, 6);
+        Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic> F;
+        F.resize(nmatcher, 6);
+
+        for(int i=0; i<3; ++i)
+        {
+            wF.col(i) = Real{1.0} * cross.col(i).array();
+            wF.col(i + 3) = Real{1.0} * trgNormals.col(i).array();
+            F.col(i) = cross.col(i);
+            F.col(i + 3) = trgNormals.col(i);
+        }
+        const Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic> A = wF.transpose() * F;
+        const Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic> deltas = srcPositions - trgPositions;
+        Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic> dotProd = 
+            Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic>::Zero(nmatcher, 1);
+        for(int32_t i=0; i<3; ++i)
+        {
+            dotProd += (deltas.col(i).array() * trgNormals.col(i).array()).matrix();
+        }
+
+        const Eigen::Matrix<Real, Eigen::Dynamic, 1> b = -(wF.transpose() * dotProd);
+        Eigen::Matrix<Real, Eigen::Dynamic, 1> x;
+        x.resize(A.rows());
+        // solve A * x = b
+        x = A.llt().solve(b);
+        Eigen::Transform<Real, 3, Eigen::Affine> transform;
+        transform = Eigen::AngleAxis<Real>(x.head(3).norm(), x.head(3).normalized());
+        transform.translation() = x.segment(3, 3);
+
+        Eigen::Matrix<Real, 4, 4> transMat = transform.matrix();
+
+        initTransMat = transMat * initTransMat;
+    }
+    finalPose = initTransMat;
+}
+```
+
+
+
